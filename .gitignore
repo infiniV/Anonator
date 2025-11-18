@@ -62,13 +62,17 @@ htmlcov/
 .env
 .env.local
 
-# Video files
+# Video files (except testData demos)
 *.mp4
 *.avi
 *.mov
 *.mkv
 *.webm
 *_anonymized.*
+
+# Exception: Keep demo videos in testData
+!testData/*.mp4
+!testData/*_anonymized.mp4
 
 # Test data
 test_videos/
@@ -79,6 +83,10 @@ fixtures/
 test_output/
 *.test.mp4
 *.test.avi
+
+# Exception: Keep testData folder for demo videos
+!testData/
+!testData/**
 
 # Temporary files
 *.tmp

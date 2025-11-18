@@ -130,6 +130,30 @@ python -m anonator.main
 5. Click Start Processing
 6. Output video will have all faces blacked out and audio removed
 
+## Video Examples
+
+See side-by-side comparison of original videos and anonymized results:
+
+### Example 1: 134436-759734820_small.mp4
+
+| Original | Anonymized |
+|----------|------------|
+| [testData/134436-759734820_small.mp4](testData/134436-759734820_small.mp4) | [testData/134436-759734820_small_anonymized.mp4](testData/134436-759734820_small_anonymized.mp4) |
+| Before face anonymization | After processing with Anonator |
+
+### Example 2: 41315-429396382_small.mp4
+
+| Original | Anonymized |
+|----------|------------|
+| [testData/41315-429396382_small.mp4](testData/41315-429396382_small.mp4) | [testData/41315-429396382_small_anonymized.mp4](testData/41315-429396382_small_anonymized.mp4) |
+| Before face anonymization | After processing with Anonator |
+
+**Demo videos showcase:**
+- Automatic face detection in various lighting conditions
+- Real-time GPU-accelerated processing
+- Complete face coverage with anonymization
+- Maintained video quality and resolution
+
 ## Performance Benchmarks
 
 ### GPU Processing (RTX 3060 with FP16)

@@ -90,10 +90,23 @@ uv sync
 uv pip install opencv-python Pillow imageio imageio-ffmpeg tkinterdnd2 pyinstaller "numpy<2"
 ```
 
-Run the application:
+Or use the Makefile:
 
 ```bash
-uv run python -m anonator.main
+make install-dev    # Install all dependencies including testing tools
+make dev           # Complete dev setup (install + prepare test data)
+```
+
+## Running the Application
+
+### Using Makefile (Recommended)
+```bash
+make run           # Start the UI application
+```
+
+### Using Python Directly
+```bash
+python -m anonator.main
 # OR
 .venv/Scripts/python.exe -m anonator.main
 ```
@@ -174,31 +187,85 @@ anonator/
 │   │   ├── main_window.py     # Main application window
 │   │   └── frame_viewer.py    # Frame preview widget
 │   └── main.py                # Application entry point
-├── tests/                     # Unit tests
-├── resources/DOCS.md          # Technical documentation
-├── CONFIG_EXAMPLE.md          # Configuration guide
-├── pyproject.toml             # Dependencies
+├── tests/                     # Comprehensive test suite (130+ tests)
+│   ├── unit/                  # Unit tests (fast, isolated)
+│   ├── integration/           # Integration tests (real detector)
+│   ├── benchmarks/            # Performance benchmarks
+│   ├── conftest.py            # Shared test fixtures
+│   └── README.md              # Testing documentation
+├── Makefile                   # Build system
+├── Makefile.md                # Makefile quick reference
+├── pyproject.toml             # Python project configuration
 └── README.md                  # This file
 ```
 
 ## Development and Testing
 
-Run unit tests:
+This project includes a comprehensive test suite with 130+ tests covering all custom code, model validation, and performance benchmarking.
+
+### Using Makefile (Recommended)
 
 ```bash
-uv run pytest
+# Setup development environment
+make dev                # Install deps + prepare test data
+
+# Run tests
+make test              # All tests (unit + integration)
+make test-unit         # Unit tests only (fast, ~10s)
+make test-integration  # Integration tests (~40s)
+make test-cov          # Tests with coverage report
+make test-fast         # Tests in parallel
+
+# Other commands
+make run               # Run the application
+make build             # Build executable
+make clean             # Clean all artifacts
+make help              # Show all available commands
 ```
+
+See `Makefile.md` for complete command reference.
+
+### Running Tests Directly
+
+```bash
+# All tests
+pytest tests/ -v
+
+# Specific test suites
+pytest tests/unit/ -v              # Unit tests
+pytest tests/integration/ -v       # Integration tests
+pytest tests/benchmarks/ --benchmark-only  # Benchmarks
+
+# With coverage
+pytest tests/ --cov=src/anonator --cov-report=html
+```
+
+### Test Coverage
+
+- **130 tests passing** (100% of runnable tests)
+- **80%+ code coverage** for custom code
+- Tests cover: anonymization, configuration, video processing, face detection, multi-pass detection, edge cases, and performance benchmarks
+
+See `tests/README.md` for detailed testing documentation.
 
 ## Building Standalone Executable
 
-Build a standalone Windows executable with PyInstaller:
+### Using Makefile (Recommended)
+
+```bash
+make build             # Build directory-based executable
+make build-onefile     # Build single .exe file
+make build-debug       # Build with console window
+```
+
+### Using PyInstaller Directly
 
 ```bash
 # Make sure all dependencies are installed first
-uv pip install pyinstaller
+pip install pyinstaller
 
 # Build the executable
-uv run pyinstaller anonator.spec
+pyinstaller anonator.spec
 
 # The executable will be in dist/Anonator/Anonator.exe
 ```
@@ -227,6 +294,24 @@ See `resources/DOCS.md` for complete technical documentation:
 - Performance optimization
 - Troubleshooting
 - Configuration guide
+
+## Makefile Commands
+
+| Command | Description |
+|---------|-------------|
+| `make help` | Show all available commands |
+| `make install` | Install production dependencies |
+| `make install-dev` | Install dev dependencies + testing tools |
+| `make test` | Run all tests (unit + integration) |
+| `make test-unit` | Run unit tests only (fast) |
+| `make test-cov` | Run tests with coverage report |
+| `make run` | Start the application UI |
+| `make build` | Build executable with PyInstaller |
+| `make clean` | Clean all artifacts |
+| `make dev` | Setup complete dev environment |
+| `make info` | Show project information |
+
+See `Makefile.md` for complete documentation.
 
 ## Keywords
 
@@ -296,5 +381,3 @@ This project builds upon the excellent work of:
 - **Shuo Yang, Ping Luo, Chen Change Loy, and Xiaoou Tang** for the WiderFace benchmark dataset
 - **PyTorch team** for the deep learning framework and CUDA support
 - **OpenCV contributors** for computer vision and video processing tools
-#   A n o n a t o r  
- 

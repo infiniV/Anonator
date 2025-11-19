@@ -40,16 +40,20 @@ help: ## Show this help message
 .PHONY: install
 install: ## Install production dependencies
 	@echo "$(GREEN)Installing production dependencies...$(NC)"
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -e .
+	uv pip install --upgrade pip
+	uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+	uv pip install --no-build-isolation git+https://github.com/hukkelas/DSFD-Pytorch-Inference.git
+	uv pip install -e .
 	@echo "$(GREEN)Production dependencies installed!$(NC)"
 
 .PHONY: install-dev
 install-dev: ## Install development dependencies (includes testing tools)
 	@echo "$(GREEN)Installing development dependencies...$(NC)"
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -e .
-	$(PYTHON) -m pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-timeout pytest-xdist hypothesis
+	uv pip install --upgrade pip
+	uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+	uv pip install --no-build-isolation git+https://github.com/hukkelas/DSFD-Pytorch-Inference.git
+	uv pip install -e .
+	uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-timeout pytest-xdist hypothesis
 	@echo "$(GREEN)Development dependencies installed!$(NC)"
 
 .PHONY: install-all

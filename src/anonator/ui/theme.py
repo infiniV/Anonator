@@ -1,7 +1,7 @@
 """
 Theme configuration for Anonator UI.
 
-Implements Claude Code inspired dark theme with clean, professional styling.
+Implements professional brown dark theme with clean, flat design.
 """
 
 from dataclasses import dataclass
@@ -12,40 +12,41 @@ from typing import Dict
 class ColorPalette:
     """Color palette for the application theme."""
 
-    # Background colors
-    bg_primary: str = "#0d0d0d"
-    bg_secondary: str = "#1a1a1a"
-    bg_tertiary: str = "#252525"
-    bg_hover: str = "#2a2a2a"
+    # Background colors - Professional brown dark theme
+    bg_primary: str = "#1A0F0A"
+    bg_secondary: str = "#2B1810"
+    bg_tertiary: str = "#3D2418"
+    bg_hover: str = "#4A2D1F"
 
-    # Border colors
-    border_primary: str = "#3a3a3a"
-    border_secondary: str = "#2a2a2a"
-    border_focus: str = "#5b9dd9"
+    # Border colors - Subtle brown borders for clean look
+    border_primary: str = "#4A2D1F"
+    border_secondary: str = "#3D2418"
+    border_focus: str = "#D4A574"
 
-    # Text colors
-    text_primary: str = "#e8e8e8"
-    text_secondary: str = "#999999"
-    text_tertiary: str = "#666666"
+    # Text colors - Cream tones for high contrast readability
+    text_primary: str = "#FFF8DC"
+    text_secondary: str = "#D4C5B0"
+    text_tertiary: str = "#A89680"
 
-    # Accent colors
-    accent_primary: str = "#5b9dd9"
-    accent_hover: str = "#6daee6"
+    # Accent colors - Golden brown accents
+    accent_primary: str = "#D4A574"
+    accent_hover: str = "#E5B885"
+    accent_light: str = "#F0C896"
 
-    # Status colors
-    success: str = "#4caf50"
-    warning: str = "#ff9800"
-    error: str = "#f44336"
-    hipaa: str = "#ef5350"
+    # Status colors - Muted flat colors
+    success: str = "#8FAF6F"
+    warning: str = "#D4A574"
+    error: str = "#C17B5F"
+    hipaa: str = "#C17B5F"
 
     # Button colors
-    button_primary_bg: str = "#5b9dd9"
-    button_primary_hover: str = "#6daee6"
-    button_primary_text: str = "#ffffff"
+    button_primary_bg: str = "#D4A574"
+    button_primary_hover: str = "#E5B885"
+    button_primary_text: str = "#1A0F0A"
 
-    button_secondary_bg: str = "#2a2a2a"
-    button_secondary_hover: str = "#3a3a3a"
-    button_secondary_text: str = "#e8e8e8"
+    button_secondary_bg: str = "#3D2418"
+    button_secondary_hover: str = "#4A2D1F"
+    button_secondary_text: str = "#FFF8DC"
 
 
 @dataclass
@@ -55,14 +56,14 @@ class Typography:
     font_family: str = "Segoe UI"
     font_family_mono: str = "Consolas"
 
-    # Font sizes
-    size_xs: int = 9
-    size_sm: int = 10
-    size_base: int = 11
-    size_lg: int = 13
-    size_xl: int = 15
-    size_2xl: int = 18
-    size_3xl: int = 24
+    # Font sizes - Refined scale with better hierarchy
+    size_xs: int = 10
+    size_sm: int = 11
+    size_base: int = 13
+    size_lg: int = 15
+    size_xl: int = 18
+    size_2xl: int = 24
+    size_3xl: int = 32
 
     # Font weights
     weight_normal: str = "normal"
@@ -74,18 +75,18 @@ class Typography:
 class Spacing:
     """Spacing and sizing constants."""
 
-    # Padding
-    pad_xs: int = 4
-    pad_sm: int = 8
-    pad_base: int = 12
-    pad_lg: int = 16
-    pad_xl: int = 24
-    pad_2xl: int = 32
+    # Padding - Generous spacing for refined look
+    pad_xs: int = 8
+    pad_sm: int = 12
+    pad_base: int = 16
+    pad_lg: int = 20
+    pad_xl: int = 32
+    pad_2xl: int = 48
 
-    # Border radius
-    radius_sm: int = 4
-    radius_base: int = 6
-    radius_lg: int = 8
+    # Border radius - Smoother corners for polished appearance
+    radius_sm: int = 8
+    radius_base: int = 12
+    radius_lg: int = 16
 
     # Border width
     border_width: int = 1
@@ -158,7 +159,7 @@ class Theme:
                     'background': self.colors.accent_primary,
                     'troughcolor': self.colors.bg_tertiary,
                     'borderwidth': 0,
-                    'thickness': 8
+                    'thickness': 6
                 }
             }
         }

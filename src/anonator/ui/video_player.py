@@ -3,13 +3,12 @@ Video player widget for playing processed videos.
 """
 
 import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
 import threading
 import time
-from .theme import THEME
 from .widgets import Card, Button, SectionLabel
 
 
@@ -26,68 +25,62 @@ class VideoPlayer:
         self._stop_flag = threading.Event()
 
         self.container = Card(parent)
-        self.container.pack(fill=tk.BOTH, expand=True)
 
         self._create_ui()
 
     def _create_ui(self):
-        content = tk.Frame(self.container, bg=THEME.colors.bg_secondary)
-        content.pack(fill=tk.BOTH, expand=True, padx=THEME.spacing.pad_lg, pady=THEME.spacing.pad_lg)
+        content = ctk.CTkFrame(self.container, fg_color="transparent")
+        content.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        header = tk.Frame(content, bg=THEME.colors.bg_secondary)
-        header.pack(fill=tk.X, pady=(0, THEME.spacing.pad_base))
+        header = ctk.CTkFrame(content, fg_color="transparent")
+        header.pack(fill=tk.X, pady=(0, 10))
 
         SectionLabel(header, text="Processed Video").pack(side=tk.LEFT, anchor='w')
 
-        self.status_label = tk.Label(
+        self.status_label = ctk.CTkLabel(
             header,
             text="No video loaded",
-            fg=THEME.colors.text_tertiary,
-            bg=THEME.colors.bg_secondary,
-            font=(THEME.typography.font_family, THEME.typography.size_xs)
+            font=("Segoe UI", 10)
         )
         self.status_label.pack(side=tk.RIGHT)
 
-        canvas_container = tk.Frame(
+        canvas_container = ctk.CTkFrame(
             content,
-            bg=THEME.colors.bg_tertiary,
-            highlightbackground=THEME.colors.border_primary,
-            highlightthickness=THEME.spacing.border_width
+            corner_radius=12
         )
-        canvas_container.pack(fill=tk.BOTH, expand=True, pady=(0, THEME.spacing.pad_base))
+        canvas_container.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
 
         self.canvas = tk.Canvas(
             canvas_container,
-            bg=THEME.colors.bg_tertiary,
+            bg="#3D2418",
             highlightthickness=0,
-            height=300
+            height=180
         )
-        self.canvas.pack(fill=tk.BOTH, expand=True, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
         self.placeholder_text = self.canvas.create_text(
             0, 0,
             text="Processed video will appear here after completion",
-            fill=THEME.colors.text_tertiary,
-            font=(THEME.typography.font_family, THEME.typography.size_sm),
+            fill="#A89680",
+            font=("Segoe UI", 11),
             anchor='center'
         )
         self.canvas.bind('<Configure>', self._center_placeholder)
 
-        controls_frame = tk.Frame(content, bg=THEME.colors.bg_secondary)
-        controls_frame.pack(fill=tk.X, pady=(0, THEME.spacing.pad_base))
+        controls_frame = ctk.CTkFrame(content, fg_color="transparent")
+        controls_frame.pack(fill=tk.X)
 
         self.progress_var = tk.DoubleVar()
-        self.progress_slider = ttk.Scale(
+        self.progress_slider = ctk.CTkSlider(
             controls_frame,
             from_=0,
             to=100,
             variable=self.progress_var,
-            orient=tk.HORIZONTAL,
             command=self._on_seek
         )
-        self.progress_slider.pack(fill=tk.X, pady=(0, THEME.spacing.pad_xs))
+        self.progress_slider.pack(fill=tk.X, pady=(0, 10))
 
-        button_frame = tk.Frame(controls_frame, bg=THEME.colors.bg_secondary)
+        button_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
         button_frame.pack()
 
         self.play_button = Button(
@@ -97,7 +90,7 @@ class VideoPlayer:
             command=self._toggle_play,
             state=tk.DISABLED
         )
-        self.play_button.pack(side=tk.LEFT, padx=THEME.spacing.pad_xs)
+        self.play_button.pack(side=tk.LEFT, padx=(0, 10))
 
         self.stop_button = Button(
             button_frame,
@@ -106,16 +99,14 @@ class VideoPlayer:
             command=self._stop_video,
             state=tk.DISABLED
         )
-        self.stop_button.pack(side=tk.LEFT, padx=THEME.spacing.pad_xs)
+        self.stop_button.pack(side=tk.LEFT, padx=(0, 16))
 
-        self.time_label = tk.Label(
+        self.time_label = ctk.CTkLabel(
             button_frame,
             text="00:00 / 00:00",
-            fg=THEME.colors.text_secondary,
-            bg=THEME.colors.bg_secondary,
-            font=(THEME.typography.font_family_mono, THEME.typography.size_sm)
+            font=("Consolas", 11)
         )
-        self.time_label.pack(side=tk.LEFT, padx=THEME.spacing.pad_lg)
+        self.time_label.pack(side=tk.LEFT)
 
         self._photo = None
 
@@ -130,7 +121,7 @@ class VideoPlayer:
         self.cap = cv2.VideoCapture(video_path)
 
         if not self.cap.isOpened():
-            self.status_label.config(text="Error: Could not open video")
+            self.status_label.configure(text="Error: Could not open video")
             return
 
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -138,11 +129,11 @@ class VideoPlayer:
         self.current_frame = 0
 
         duration = self.total_frames / self.fps if self.fps > 0 else 0
-        self.status_label.config(text=f"{self.total_frames} frames, {duration:.1f}s")
+        self.status_label.configure(text=f"{self.total_frames} frames, {duration:.1f}s")
 
-        self.play_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.NORMAL)
-        self.progress_slider.config(to=self.total_frames - 1)
+        self.play_button.configure(state=tk.NORMAL)
+        self.stop_button.configure(state=tk.NORMAL)
+        self.progress_slider.configure(to=self.total_frames - 1)
 
         self.canvas.delete(self.placeholder_text)
 
@@ -159,7 +150,7 @@ class VideoPlayer:
             return
 
         self.is_playing = True
-        self.play_button.config(text="Pause")
+        self.play_button.configure(text="Pause")
         self._stop_flag.clear()
 
         self.playback_thread = threading.Thread(target=self._playback_loop, daemon=True)
@@ -167,7 +158,7 @@ class VideoPlayer:
 
     def _pause_video(self):
         self.is_playing = False
-        self.play_button.config(text="Play")
+        self.play_button.configure(text="Play")
         self._stop_flag.set()
 
     def _stop_video(self):
@@ -209,8 +200,8 @@ class VideoPlayer:
         canvas_height = self.canvas.winfo_height()
 
         if canvas_width <= 1 or canvas_height <= 1:
-            canvas_width = 800
-            canvas_height = 300
+            canvas_width = 500
+            canvas_height = 180
 
         h, w = frame_rgb.shape[:2]
         scale = min(canvas_width / w, canvas_height / h)
@@ -241,7 +232,7 @@ class VideoPlayer:
         total_min = int(total_time // 60)
         total_sec = int(total_time % 60)
 
-        self.time_label.config(text=f"{current_min:02d}:{current_sec:02d} / {total_min:02d}:{total_sec:02d}")
+        self.time_label.configure(text=f"{current_min:02d}:{current_sec:02d} / {total_min:02d}:{total_sec:02d}")
 
     def _on_seek(self, value):
         if not self.cap or self.is_playing:

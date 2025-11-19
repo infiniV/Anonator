@@ -2,42 +2,38 @@ import tkinter as tk
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
-from .theme import THEME
+import customtkinter as ctk
 
 
 class FrameComparisonViewer:
-    def __init__(self, parent, max_width=550, max_height=400):
+    def __init__(self, parent, max_width=350, max_height=220):
         self.parent = parent
         self.max_width = max_width
         self.max_height = max_height
 
-        self.container = tk.Frame(parent, bg=THEME.colors.bg_primary)
-        self.container.pack(fill=tk.BOTH, expand=True)
+        self.container = ctk.CTkFrame(parent, fg_color="transparent")
 
-        grid_container = tk.Frame(self.container, bg=THEME.colors.bg_primary)
+        grid_container = ctk.CTkFrame(self.container, fg_color="transparent")
         grid_container.pack(fill=tk.BOTH, expand=True)
 
-        self.frame_original = tk.Frame(
+        self.frame_original = ctk.CTkFrame(
             grid_container,
-            bg=THEME.colors.bg_secondary,
-            highlightbackground=THEME.colors.border_primary,
-            highlightthickness=THEME.spacing.border_width
+            corner_radius=12
         )
-        self.frame_original.grid(row=0, column=0, sticky='nsew', padx=(0, THEME.spacing.pad_base), pady=(0, THEME.spacing.pad_xl))
+        self.frame_original.grid(row=0, column=0, sticky='nsew', padx=(0, 6), pady=(0, 0))
 
         grid_container.columnconfigure(0, weight=1)
         grid_container.columnconfigure(1, weight=1)
         grid_container.rowconfigure(0, weight=1)
 
-        label_container_orig = tk.Frame(self.frame_original, bg=THEME.colors.bg_secondary)
-        label_container_orig.pack(fill=tk.X, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
+        label_container_orig = ctk.CTkFrame(self.frame_original, fg_color="transparent")
+        label_container_orig.pack(fill=tk.X, padx=12, pady=(12, 8))
 
-        self.label_original = tk.Label(
+        self.label_original = ctk.CTkLabel(
             label_container_orig,
             text="Original",
-            fg=THEME.colors.text_primary,
-            bg=THEME.colors.bg_secondary,
-            font=(THEME.typography.font_family, THEME.typography.size_base, THEME.typography.weight_bold)
+            font=("Segoe UI", 11, "bold"),
+            anchor='w'
         )
         self.label_original.pack(anchor='w')
 
@@ -45,28 +41,25 @@ class FrameComparisonViewer:
             self.frame_original,
             width=max_width,
             height=max_height,
-            bg=THEME.colors.bg_tertiary,
+            bg="#3D2418",
             highlightthickness=0
         )
-        self.canvas_original.pack(padx=THEME.spacing.pad_base, pady=(0, THEME.spacing.pad_base))
+        self.canvas_original.pack(padx=12, pady=(0, 12))
 
-        self.frame_processed = tk.Frame(
+        self.frame_processed = ctk.CTkFrame(
             grid_container,
-            bg=THEME.colors.bg_secondary,
-            highlightbackground=THEME.colors.border_primary,
-            highlightthickness=THEME.spacing.border_width
+            corner_radius=12
         )
-        self.frame_processed.grid(row=0, column=1, sticky='nsew', padx=(THEME.spacing.pad_base, 0), pady=(0, THEME.spacing.pad_xl))
+        self.frame_processed.grid(row=0, column=1, sticky='nsew', padx=(6, 0), pady=(0, 0))
 
-        label_container_proc = tk.Frame(self.frame_processed, bg=THEME.colors.bg_secondary)
-        label_container_proc.pack(fill=tk.X, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
+        label_container_proc = ctk.CTkFrame(self.frame_processed, fg_color="transparent")
+        label_container_proc.pack(fill=tk.X, padx=12, pady=(12, 8))
 
-        self.label_processed = tk.Label(
+        self.label_processed = ctk.CTkLabel(
             label_container_proc,
             text="Anonymized",
-            fg=THEME.colors.text_primary,
-            bg=THEME.colors.bg_secondary,
-            font=(THEME.typography.font_family, THEME.typography.size_base, THEME.typography.weight_bold)
+            font=("Segoe UI", 11, "bold"),
+            anchor='w'
         )
         self.label_processed.pack(anchor='w')
 
@@ -74,10 +67,10 @@ class FrameComparisonViewer:
             self.frame_processed,
             width=max_width,
             height=max_height,
-            bg=THEME.colors.bg_tertiary,
+            bg="#3D2418",
             highlightthickness=0
         )
-        self.canvas_processed.pack(padx=THEME.spacing.pad_base, pady=(0, THEME.spacing.pad_base))
+        self.canvas_processed.pack(padx=12, pady=(0, 12))
 
         self._original_image = None
         self._processed_image = None

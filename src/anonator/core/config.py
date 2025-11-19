@@ -78,7 +78,7 @@ class ProcessorConfig:
     """
 
     # Face detector model: "RetinaNetResNet50", "RetinaNetMobileNetV1", "DSFDDetector"
-    detector_model: str = "RetinaNetResNet50"
+    detector_model: str = "RetinaNetMobileNetV1"
 
     # Initial detector confidence threshold (will be overridden by mode settings)
     detector_confidence: float = 0.2
@@ -122,10 +122,99 @@ class ProcessorConfig:
     use_ellipse_mask: bool = True
 
 
+@dataclass
+class PerformanceConfig:
+    """Performance optimization configuration.
+
+    Controls batch processing, frame skipping, and pipeline parallelism
+    for significant speedup in video processing.
+    """
+
+    # Batch size for batched detection (1 = no batching)
+    # GPU: 4-16, CPU: 1-4
+    batch_size: int = 1
+
+    # Frame skip interval (1 = no skipping, 3 = detect every 3rd frame)
+    # Higher = faster but may miss fast-moving faces
+    frame_skip_interval: int = 1
+
+    # Maximum resolution override for this performance mode
+    # Lower = faster detection
+    max_resolution_override: int = None
+
+    # Enable pipeline parallelism (threaded I/O)
+    # Overlaps reading/processing/writing for extra speedup
+    enable_pipeline: bool = False
+
+    # Scene change detection threshold (0.0-1.0)
+    # Forces detection after scene cuts even when frame skipping
+    # Lower = more sensitive to scene changes
+    scene_change_threshold: float = 0.3
+
+    # Queue sizes for pipeline parallelism
+    read_queue_size: int = 32
+    write_queue_size: int = 16
+
+
+# Performance mode presets
+def get_performance_preset(mode: str, is_gpu: bool = True):
+    """Get performance configuration preset.
+
+    Args:
+        mode: "original", "quality", "balanced", or "maximum_speed"
+        is_gpu: True if GPU is available, False for CPU
+
+    Returns:
+        PerformanceConfig instance
+    """
+    if mode == "original":
+        return PerformanceConfig(
+            batch_size=1,
+            frame_skip_interval=1,
+            max_resolution_override=None,
+            enable_pipeline=False
+        )
+
+    elif mode == "quality":
+        return PerformanceConfig(
+            batch_size=4 if is_gpu else 2,
+            frame_skip_interval=1,
+            max_resolution_override=1920,
+            enable_pipeline=True,
+            read_queue_size=16,
+            write_queue_size=8
+        )
+
+    elif mode == "balanced":
+        return PerformanceConfig(
+            batch_size=8 if is_gpu else 2,
+            frame_skip_interval=3,
+            max_resolution_override=1280,
+            enable_pipeline=True,
+            read_queue_size=32,
+            write_queue_size=16
+        )
+
+    elif mode == "maximum_speed":
+        return PerformanceConfig(
+            batch_size=16 if is_gpu else 4,
+            frame_skip_interval=5,
+            max_resolution_override=960,
+            enable_pipeline=True,
+            scene_change_threshold=0.25,
+            read_queue_size=48,
+            write_queue_size=24
+        )
+
+    else:
+        raise ValueError(f"Unknown performance mode: {mode}")
+
+
 # Global configuration instances
 HIPAA_MODE = HIPAAConfig()
 STANDARD_MODE = StandardConfig()
 PROCESSOR_CONFIG = ProcessorConfig()
+PERFORMANCE_CONFIG = PerformanceConfig()  # Default: original mode (no optimizations)
 
 
 def get_mode_config(hipaa_mode: bool):

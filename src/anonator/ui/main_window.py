@@ -4,12 +4,19 @@ import tkinter as tk
 import queue
 from pathlib import Path
 import datetime
+import platform
 
 try:
     from tkinterdnd2 import TkinterDnD, DND_FILES
     DND_AVAILABLE = True
 except ImportError:
     DND_AVAILABLE = False
+
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
 
 from anonator.core.processor import VideoProcessor, ProgressData
 from anonator.ui.frame_viewer import FrameComparisonViewer
@@ -91,6 +98,11 @@ class MainWindow:
         hipaa_card = Card(content)
         hipaa_card.pack(fill=tk.X, pady=(0, card_spacing))
         self._create_hipaa_section(hipaa_card)
+
+        # System Info Section (New)
+        system_card = Card(content)
+        system_card.pack(fill=tk.X, pady=(0, card_spacing))
+        self._create_system_section(system_card)
 
         return pane
 
@@ -203,7 +215,7 @@ class MainWindow:
             header,
             text="HIPAA Mode",
             font=(THEME.typography.font_family, THEME.typography.size_lg, "bold"),
-            text_color=THEME.colors.hipaa
+            text_color=THEME.colors.text_primary  # Changed from hipaa color to text_primary
         )
         hipaa_label.pack(side=tk.LEFT)
 
@@ -213,7 +225,7 @@ class MainWindow:
             text="",
             variable=self.hipaa_mode_var,
             command=self._on_hipaa_mode_toggle,
-            progress_color=THEME.colors.hipaa,
+            progress_color=THEME.colors.accent_primary, # Changed from hipaa color to accent_primary
             button_color=THEME.colors.text_primary,
             button_hover_color=THEME.colors.text_secondary
         )
@@ -229,6 +241,36 @@ class MainWindow:
         warning.pack(anchor='w')
 
         self._on_hipaa_mode_toggle()
+
+    def _create_system_section(self, parent):
+        """Create system info section."""
+        section = ctk.CTkFrame(parent, fg_color="transparent")
+        section.pack(fill=tk.BOTH, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
+
+        SectionLabel(section, text="System Info").pack(anchor='w', pady=(0, THEME.spacing.pad_sm))
+
+        # Grid for info
+        info_grid = ctk.CTkFrame(section, fg_color="transparent")
+        info_grid.pack(fill=tk.X)
+        info_grid.columnconfigure(0, weight=0)
+        info_grid.columnconfigure(1, weight=1)
+
+        # Device
+        FieldLabel(info_grid, text="Device:").grid(row=0, column=0, sticky='w', padx=(0, THEME.spacing.pad_sm))
+        
+        device_name = "CPU"
+        if TORCH_AVAILABLE and torch.cuda.is_available():
+            device_name = f"GPU ({torch.cuda.get_device_name(0)})"
+        
+        Label(info_grid, text=device_name, variant="secondary").grid(row=0, column=1, sticky='w')
+
+        # OS
+        FieldLabel(info_grid, text="OS:").grid(row=1, column=0, sticky='w', padx=(0, THEME.spacing.pad_sm))
+        Label(info_grid, text=f"{platform.system()} {platform.release()}", variant="secondary").grid(row=1, column=1, sticky='w')
+
+        # Python
+        FieldLabel(info_grid, text="Python:").grid(row=2, column=0, sticky='w', padx=(0, THEME.spacing.pad_sm))
+        Label(info_grid, text=platform.python_version(), variant="secondary").grid(row=2, column=1, sticky='w')
 
     def _create_actions_section(self, parent):
         """Create action buttons section."""

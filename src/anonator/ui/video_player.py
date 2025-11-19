@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 import threading
 import time
 from .widgets import Card, Button, SectionLabel
+from anonator.ui.theme import THEME
 
 
 class VideoPlayer:
@@ -30,39 +31,43 @@ class VideoPlayer:
 
     def _create_ui(self):
         content = ctk.CTkFrame(self.container, fg_color="transparent")
-        content.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        content.pack(fill=tk.BOTH, expand=True, padx=THEME.spacing.pad_lg, pady=THEME.spacing.pad_lg)
 
         header = ctk.CTkFrame(content, fg_color="transparent")
-        header.pack(fill=tk.X, pady=(0, 10))
+        header.pack(fill=tk.X, pady=(0, THEME.spacing.pad_base))
 
         SectionLabel(header, text="Processed Video").pack(side=tk.LEFT, anchor='w')
 
         self.status_label = ctk.CTkLabel(
             header,
             text="No video loaded",
-            font=("Segoe UI", 10)
+            font=(THEME.typography.font_family, THEME.typography.size_sm),
+            text_color=THEME.colors.text_secondary
         )
         self.status_label.pack(side=tk.RIGHT)
 
         canvas_container = ctk.CTkFrame(
             content,
-            corner_radius=12
+            corner_radius=THEME.spacing.radius_lg,
+            fg_color=THEME.colors.bg_tertiary,
+            border_width=THEME.spacing.border_width,
+            border_color=THEME.colors.border_secondary
         )
-        canvas_container.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
+        canvas_container.pack(fill=tk.BOTH, expand=True, pady=(0, THEME.spacing.pad_base))
 
         self.canvas = tk.Canvas(
             canvas_container,
-            bg="#3D2418",
+            bg=THEME.colors.bg_tertiary,
             highlightthickness=0,
             height=180
         )
-        self.canvas.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
 
         self.placeholder_text = self.canvas.create_text(
             0, 0,
             text="Processed video will appear here after completion",
-            fill="#A89680",
-            font=("Segoe UI", 11),
+            fill=THEME.colors.text_tertiary,
+            font=(THEME.typography.font_family, THEME.typography.size_sm),
             anchor='center'
         )
         self.canvas.bind('<Configure>', self._center_placeholder)
@@ -76,9 +81,13 @@ class VideoPlayer:
             from_=0,
             to=100,
             variable=self.progress_var,
-            command=self._on_seek
+            command=self._on_seek,
+            fg_color=THEME.colors.bg_tertiary,
+            progress_color=THEME.colors.accent_primary,
+            button_color=THEME.colors.accent_primary,
+            button_hover_color=THEME.colors.accent_hover
         )
-        self.progress_slider.pack(fill=tk.X, pady=(0, 10))
+        self.progress_slider.pack(fill=tk.X, pady=(0, THEME.spacing.pad_base))
 
         button_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
         button_frame.pack()
@@ -90,7 +99,7 @@ class VideoPlayer:
             command=self._toggle_play,
             state=tk.DISABLED
         )
-        self.play_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.play_button.pack(side=tk.LEFT, padx=(0, THEME.spacing.pad_base))
 
         self.stop_button = Button(
             button_frame,
@@ -99,12 +108,13 @@ class VideoPlayer:
             command=self._stop_video,
             state=tk.DISABLED
         )
-        self.stop_button.pack(side=tk.LEFT, padx=(0, 16))
+        self.stop_button.pack(side=tk.LEFT, padx=(0, THEME.spacing.pad_lg))
 
         self.time_label = ctk.CTkLabel(
             button_frame,
             text="00:00 / 00:00",
-            font=("Consolas", 11)
+            font=(THEME.typography.font_family_mono, THEME.typography.size_sm),
+            text_color=THEME.colors.text_secondary
         )
         self.time_label.pack(side=tk.LEFT)
 

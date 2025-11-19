@@ -17,12 +17,8 @@ logging.basicConfig(
 
 
 def main():
-    # Set CustomTkinter appearance mode and theme
+    # Set CustomTkinter appearance mode
     ctk.set_appearance_mode("dark")
-
-    # Load custom brown theme
-    theme_path = Path(__file__).parent / "ui" / "brown_theme.json"
-    ctk.set_default_color_theme(str(theme_path))
 
     if DND_AVAILABLE:
         # Note: TkinterDnD is not compatible with CustomTkinter

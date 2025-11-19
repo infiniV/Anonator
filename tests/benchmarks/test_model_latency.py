@@ -15,7 +15,7 @@ class TestSingleFrameInferenceLatency:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cpu",
             fp16_inference=False,
@@ -36,7 +36,7 @@ class TestSingleFrameInferenceLatency:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cuda",
             fp16_inference=False,
@@ -59,7 +59,7 @@ class TestSingleFrameInferenceLatency:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cuda",
             fp16_inference=True,
@@ -82,7 +82,7 @@ class TestSingleFrameInferenceLatency:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cuda",
             fp16_inference=False,
@@ -106,7 +106,7 @@ class TestResolutionImpact:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device=device,
         )
@@ -121,7 +121,7 @@ class TestResolutionImpact:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device=device,
         )
@@ -136,7 +136,7 @@ class TestResolutionImpact:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device=device,
         )
@@ -152,7 +152,7 @@ class TestResolutionImpact:
         import face_detection
 
         detector = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device=device,
             max_resolution=1920,  # Will downscale
@@ -338,7 +338,7 @@ class TestModelLoadingTime:
 
         def load_model():
             return face_detection.build_detector(
-                "RetinaNetResNet50",
+                "RetinaNetMobileNetV1",
                 confidence_threshold=0.5,
                 device="cpu",
             )
@@ -357,7 +357,7 @@ class TestModelLoadingTime:
 
         def load_model():
             return face_detection.build_detector(
-                "RetinaNetResNet50",
+                "RetinaNetMobileNetV1",
                 confidence_threshold=0.5,
                 device="cuda",
             )
@@ -380,14 +380,14 @@ class TestComparisonBenchmarks:
 
         # CPU detector
         detector_cpu = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cpu",
         )
 
         # GPU detector
         detector_gpu = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cuda",
             fp16_inference=False,
@@ -424,7 +424,7 @@ class TestComparisonBenchmarks:
 
         # FP32 detector
         detector_fp32 = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cuda",
             fp16_inference=False,
@@ -432,7 +432,7 @@ class TestComparisonBenchmarks:
 
         # FP16 detector
         detector_fp16 = face_detection.build_detector(
-            "RetinaNetResNet50",
+            "RetinaNetMobileNetV1",
             confidence_threshold=0.5,
             device="cuda",
             fp16_inference=True,

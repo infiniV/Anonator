@@ -88,6 +88,26 @@ class TestVideoProcessorInitialization:
         call_args = mock_face_detection.build_detector.call_args
         assert call_args is not None
 
+    @patch('anonator.core.processor.face_detection')
+    @patch('anonator.core.processor.PROCESSOR_CONFIG')
+    def test_processor_uses_configured_model(self, mock_config, mock_face_detection):
+        """Test that processor uses the model specified in PROCESSOR_CONFIG."""
+        mock_detector = Mock()
+        mock_face_detection.build_detector.return_value = mock_detector
+        mock_config.detector_model = "RetinaNetMobileNetV1"
+        mock_config.detector_confidence = 0.2
+        mock_config.nms_iou_threshold = 0.3
+        mock_config.fp16_inference = True
+        mock_config.max_resolution = 1920
+        mock_config.clip_boxes = True
+
+        processor = VideoProcessor()
+
+        # Verify detector was built with the configured model
+        mock_face_detection.build_detector.assert_called_once()
+        call_args = mock_face_detection.build_detector.call_args
+        assert call_args[0][0] == "RetinaNetMobileNetV1"
+
 
 class TestRemoveDuplicateDetections:
     """Test suite for _remove_duplicate_detections (custom NMS)."""
@@ -221,7 +241,7 @@ class TestDetectFaces:
         """Test _detect_faces when faces are found."""
         mock_detector = Mock()
         mock_detections = np.array([[100, 150, 200, 250, 0.95]], dtype=np.float64)
-        mock_detector.detect.return_value = mock_detections
+        mock_detector.batched_detect.return_value = [mock_detections]
         mock_face_detection.build_detector.return_value = mock_detector
 
         processor = VideoProcessor()
@@ -230,13 +250,13 @@ class TestDetectFaces:
         assert result is not None
         assert len(result) == 1
         assert result.dtype == np.float32
-        mock_detector.detect.assert_called_once_with(sample_frame)
+        assert mock_detector.batched_detect.called
 
     @patch('anonator.core.processor.face_detection')
     def test_detect_faces_no_detections(self, mock_face_detection, sample_frame):
         """Test _detect_faces when no faces are found."""
         mock_detector = Mock()
-        mock_detector.detect.return_value = np.array([], dtype=np.float64).reshape(0, 5)
+        mock_detector.batched_detect.return_value = [np.array([], dtype=np.float64).reshape(0, 5)]
         mock_face_detection.build_detector.return_value = mock_detector
 
         processor = VideoProcessor()
@@ -248,7 +268,7 @@ class TestDetectFaces:
     def test_detect_faces_sets_threshold(self, mock_face_detection, sample_frame):
         """Test that _detect_faces sets the confidence threshold."""
         mock_detector = Mock()
-        mock_detector.detect.return_value = np.array([[100, 150, 200, 250, 0.95]])
+        mock_detector.batched_detect.return_value = [np.array([[100, 150, 200, 250, 0.95]])]
         mock_face_detection.build_detector.return_value = mock_detector
 
         processor = VideoProcessor()
@@ -261,7 +281,7 @@ class TestDetectFaces:
     def test_detect_faces_returns_none_for_none_input(self, mock_face_detection, sample_frame):
         """Test _detect_faces handles None return from detector."""
         mock_detector = Mock()
-        mock_detector.detect.return_value = None
+        mock_detector.batched_detect.return_value = None
         mock_face_detection.build_detector.return_value = mock_detector
 
         processor = VideoProcessor()
@@ -432,7 +452,7 @@ class TestEdgeCases:
     def test_detect_faces_with_different_thresholds(self, mock_face_detection, sample_frame):
         """Test detection with various threshold values."""
         mock_detector = Mock()
-        mock_detector.detect.return_value = np.array([[100, 150, 200, 250, 0.95]])
+        mock_detector.batched_detect.return_value = [np.array([[100, 150, 200, 250, 0.95]])]
         mock_face_detection.build_detector.return_value = mock_detector
 
         processor = VideoProcessor()

@@ -21,7 +21,7 @@ except ImportError:
 from anonator.core.processor import VideoProcessor, ProgressData
 from anonator.ui.frame_viewer import FrameComparisonViewer
 from anonator.ui.video_player import VideoPlayer
-from anonator.core.config import HIPAA_MODE, STANDARD_MODE, get_mode_config
+from anonator.core.config import HIPAA_MODE, STANDARD_MODE, PROCESSOR_CONFIG, PERFORMANCE_CONFIG, get_mode_config, get_performance_preset
 from anonator.ui.widgets import Card, Button, Label, SectionLabel, FieldLabel, Entry, DropZone, Separator, LogBox, CustomAlertDialog
 from anonator.ui.theme import THEME
 
@@ -165,11 +165,56 @@ class MainWindow:
         self.threshold_entry.grid(row=1, column=1, sticky='ew', pady=(0, THEME.spacing.pad_sm))
 
         # Mask Scale
-        FieldLabel(settings_grid, text="Mask Scale").grid(row=2, column=0, sticky='w', padx=(0, THEME.spacing.pad_base))
+        FieldLabel(settings_grid, text="Mask Scale").grid(row=2, column=0, sticky='w', pady=(0, THEME.spacing.pad_sm), padx=(0, THEME.spacing.pad_base))
 
         self.mask_scale_var = tk.DoubleVar(value=STANDARD_MODE.mask_scale)
         self.mask_scale_entry = Entry(settings_grid, textvariable=self.mask_scale_var, width=150)
-        self.mask_scale_entry.grid(row=2, column=1, sticky='ew')
+        self.mask_scale_entry.grid(row=2, column=1, sticky='ew', pady=(0, THEME.spacing.pad_sm))
+
+        # Detection Model
+        FieldLabel(settings_grid, text="Detection Model").grid(row=3, column=0, sticky='w', padx=(0, THEME.spacing.pad_base))
+
+        self.model_var = tk.StringVar(value=PROCESSOR_CONFIG.detector_model)
+        model_options = ["RetinaNetMobileNetV1", "RetinaNetResNet50", "DSFDDetector"]
+        self.model_menu = ctk.CTkOptionMenu(
+            settings_grid,
+            variable=self.model_var,
+            values=model_options,
+            width=150,
+            height=32,
+            corner_radius=THEME.spacing.radius_base,
+            fg_color=THEME.colors.bg_tertiary,
+            button_color=THEME.colors.bg_tertiary,
+            button_hover_color=THEME.colors.bg_hover,
+            text_color=THEME.colors.text_primary,
+            dropdown_fg_color=THEME.colors.bg_secondary,
+            dropdown_text_color=THEME.colors.text_primary,
+            dropdown_hover_color=THEME.colors.bg_hover
+        )
+        self.model_menu.grid(row=3, column=1, sticky='ew', pady=(0, THEME.spacing.pad_sm))
+
+        # Performance Mode
+        FieldLabel(settings_grid, text="Performance Mode").grid(row=4, column=0, sticky='w', padx=(0, THEME.spacing.pad_base))
+
+        self.performance_mode_var = tk.StringVar(value="original")
+        performance_options = ["Original (No Optimization)", "Quality (3-4x faster)", "Balanced (5-8x faster)", "Maximum Speed (10-15x faster)"]
+        self.performance_menu = ctk.CTkOptionMenu(
+            settings_grid,
+            variable=self.performance_mode_var,
+            values=performance_options,
+            command=self._on_performance_mode_change,
+            width=150,
+            height=32,
+            corner_radius=THEME.spacing.radius_base,
+            fg_color=THEME.colors.bg_tertiary,
+            button_color=THEME.colors.bg_tertiary,
+            button_hover_color=THEME.colors.bg_hover,
+            text_color=THEME.colors.text_primary,
+            dropdown_fg_color=THEME.colors.bg_secondary,
+            dropdown_text_color=THEME.colors.text_primary,
+            dropdown_hover_color=THEME.colors.bg_hover
+        )
+        self.performance_menu.grid(row=4, column=1, sticky='ew')
 
         Separator(section).pack(fill=tk.X, pady=THEME.spacing.pad_base)
 
@@ -399,6 +444,32 @@ class MainWindow:
         if file_path:
             self._load_file(file_path)
 
+    def _on_performance_mode_change(self, choice):
+        """Handle performance mode selection."""
+        # Map UI choice to mode key
+        mode_map = {
+            "Original (No Optimization)": "original",
+            "Quality (3-4x faster)": "quality",
+            "Balanced (5-8x faster)": "balanced",
+            "Maximum Speed (10-15x faster)": "maximum_speed"
+        }
+        mode_key = mode_map.get(choice, "original")
+
+        # Update global performance config
+        is_gpu = TORCH_AVAILABLE and torch.cuda.is_available()
+        preset = get_performance_preset(mode_key, is_gpu=is_gpu)
+
+        # Apply preset to global config
+        PERFORMANCE_CONFIG.batch_size = preset.batch_size
+        PERFORMANCE_CONFIG.frame_skip_interval = preset.frame_skip_interval
+        PERFORMANCE_CONFIG.max_resolution_override = preset.max_resolution_override
+        PERFORMANCE_CONFIG.enable_pipeline = preset.enable_pipeline
+        PERFORMANCE_CONFIG.scene_change_threshold = preset.scene_change_threshold
+        PERFORMANCE_CONFIG.read_queue_size = preset.read_queue_size
+        PERFORMANCE_CONFIG.write_queue_size = preset.write_queue_size
+
+        self._log(f"Performance mode set to: {choice}")
+
     def _on_hipaa_mode_toggle(self):
         if self.hipaa_mode_var.get():
             self.mode_var.set(HIPAA_MODE.anonymization_mode)
@@ -411,12 +482,16 @@ class MainWindow:
                 self.mode_menu.configure(state='disabled')
                 self.threshold_entry.configure(state='disabled')
                 self.mask_scale_entry.configure(state='disabled')
+                self.model_menu.configure(state='disabled')
+                self.performance_menu.configure(state='disabled')
                 self.multi_pass_check.configure(state='disabled')
                 self.keep_audio_check.configure(state='disabled')
         else:
             self.mode_menu.configure(state='normal')
             self.threshold_entry.configure(state='normal')
             self.mask_scale_entry.configure(state='normal')
+            self.model_menu.configure(state='normal')
+            self.performance_menu.configure(state='normal')
             self.multi_pass_check.configure(state='normal')
             self.keep_audio_check.configure(state='normal')
 
@@ -448,6 +523,13 @@ class MainWindow:
         self.progress_var.set(0)
         self.progress_label.configure(text="Starting...")
         self._log("Starting processing...")
+
+        # Reinitialize processor if model has changed
+        selected_model = self.model_var.get()
+        if PROCESSOR_CONFIG.detector_model != selected_model:
+            PROCESSOR_CONFIG.detector_model = selected_model
+            self._log(f"Switching to model: {selected_model}")
+            self.processor = VideoProcessor(progress_callback=self._on_progress)
 
         self.processor.process_video(
             input_path=self.input_path,

@@ -122,7 +122,7 @@ class TestProcessorConfig:
         """Test processor config has correct default values."""
         config = ProcessorConfig()
 
-        assert config.detector_model == "RetinaNetResNet50"
+        assert config.detector_model == "RetinaNetMobileNetV1"
         assert config.detector_confidence == 0.2
         assert config.nms_iou_threshold == 0.3
         assert config.fp16_inference is True
@@ -243,7 +243,7 @@ class TestGlobalConfigInstances:
         """Test global config instances have correct default values."""
         assert HIPAA_MODE.anonymization_mode == "solid"
         assert STANDARD_MODE.anonymization_mode == "blur"
-        assert PROCESSOR_CONFIG.detector_model == "RetinaNetResNet50"
+        assert PROCESSOR_CONFIG.detector_model == "RetinaNetMobileNetV1"
 
 
 class TestConfigComparison:

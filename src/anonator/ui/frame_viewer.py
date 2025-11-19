@@ -3,10 +3,11 @@ import cv2
 import numpy as np
 from PIL import Image, ImageTk
 import customtkinter as ctk
+from anonator.ui.theme import THEME
 
 
 class FrameComparisonViewer:
-    def __init__(self, parent, max_width=350, max_height=220):
+    def __init__(self, parent, max_width=480, max_height=270):
         self.parent = parent
         self.max_width = max_width
         self.max_height = max_height
@@ -18,21 +19,25 @@ class FrameComparisonViewer:
 
         self.frame_original = ctk.CTkFrame(
             grid_container,
-            corner_radius=12
+            corner_radius=THEME.spacing.radius_lg,
+            fg_color=THEME.colors.bg_secondary,
+            border_width=THEME.spacing.border_width,
+            border_color=THEME.colors.border_primary
         )
-        self.frame_original.grid(row=0, column=0, sticky='nsew', padx=(0, 6), pady=(0, 0))
+        self.frame_original.grid(row=0, column=0, sticky='nsew', padx=(0, THEME.spacing.pad_sm), pady=(0, 0))
 
         grid_container.columnconfigure(0, weight=1)
         grid_container.columnconfigure(1, weight=1)
         grid_container.rowconfigure(0, weight=1)
 
         label_container_orig = ctk.CTkFrame(self.frame_original, fg_color="transparent")
-        label_container_orig.pack(fill=tk.X, padx=12, pady=(12, 8))
+        label_container_orig.pack(fill=tk.X, padx=THEME.spacing.pad_base, pady=(THEME.spacing.pad_base, THEME.spacing.pad_sm))
 
         self.label_original = ctk.CTkLabel(
             label_container_orig,
             text="Original",
-            font=("Segoe UI", 11, "bold"),
+            font=(THEME.typography.font_family, THEME.typography.size_sm, "bold"),
+            text_color=THEME.colors.text_primary,
             anchor='w'
         )
         self.label_original.pack(anchor='w')
@@ -41,24 +46,28 @@ class FrameComparisonViewer:
             self.frame_original,
             width=max_width,
             height=max_height,
-            bg="#3D2418",
+            bg=THEME.colors.bg_tertiary,
             highlightthickness=0
         )
-        self.canvas_original.pack(padx=12, pady=(0, 12))
+        self.canvas_original.pack(padx=THEME.spacing.pad_base, pady=(0, THEME.spacing.pad_base))
 
         self.frame_processed = ctk.CTkFrame(
             grid_container,
-            corner_radius=12
+            corner_radius=THEME.spacing.radius_lg,
+            fg_color=THEME.colors.bg_secondary,
+            border_width=THEME.spacing.border_width,
+            border_color=THEME.colors.border_primary
         )
-        self.frame_processed.grid(row=0, column=1, sticky='nsew', padx=(6, 0), pady=(0, 0))
+        self.frame_processed.grid(row=0, column=1, sticky='nsew', padx=(THEME.spacing.pad_sm, 0), pady=(0, 0))
 
         label_container_proc = ctk.CTkFrame(self.frame_processed, fg_color="transparent")
-        label_container_proc.pack(fill=tk.X, padx=12, pady=(12, 8))
+        label_container_proc.pack(fill=tk.X, padx=THEME.spacing.pad_base, pady=(THEME.spacing.pad_base, THEME.spacing.pad_sm))
 
         self.label_processed = ctk.CTkLabel(
             label_container_proc,
             text="Anonymized",
-            font=("Segoe UI", 11, "bold"),
+            font=(THEME.typography.font_family, THEME.typography.size_sm, "bold"),
+            text_color=THEME.colors.text_primary,
             anchor='w'
         )
         self.label_processed.pack(anchor='w')
@@ -67,10 +76,10 @@ class FrameComparisonViewer:
             self.frame_processed,
             width=max_width,
             height=max_height,
-            bg="#3D2418",
+            bg=THEME.colors.bg_tertiary,
             highlightthickness=0
         )
-        self.canvas_processed.pack(padx=12, pady=(0, 12))
+        self.canvas_processed.pack(padx=THEME.spacing.pad_base, pady=(0, THEME.spacing.pad_base))
 
         self._original_image = None
         self._processed_image = None

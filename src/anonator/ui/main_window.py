@@ -3,6 +3,8 @@ from tkinter import filedialog, messagebox
 import tkinter as tk
 import queue
 from pathlib import Path
+import datetime
+import platform
 
 try:
     from tkinterdnd2 import TkinterDnD, DND_FILES
@@ -10,11 +12,18 @@ try:
 except ImportError:
     DND_AVAILABLE = False
 
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
 from anonator.core.processor import VideoProcessor, ProgressData
 from anonator.ui.frame_viewer import FrameComparisonViewer
 from anonator.ui.video_player import VideoPlayer
 from anonator.core.config import HIPAA_MODE, STANDARD_MODE, get_mode_config
-from anonator.ui.widgets import Card, Button, Label, SectionLabel, FieldLabel, Entry, DropZone, Separator
+from anonator.ui.widgets import Card, Button, Label, SectionLabel, FieldLabel, Entry, DropZone, Separator, LogBox, CustomAlertDialog
+from anonator.ui.theme import THEME
 
 
 class MainWindow:
@@ -22,6 +31,7 @@ class MainWindow:
         self.root = root
         self.root.title("Anonator - Video Face Anonymization")
         self.root.geometry("1400x900")
+        self.root.configure(bg=THEME.colors.bg_primary)
 
         self.processor = VideoProcessor(progress_callback=self._on_progress)
         self.progress_queue = queue.Queue()
@@ -37,63 +47,74 @@ class MainWindow:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _setup_ui(self):
-        container = ctk.CTkFrame(self.root)
+        container = ctk.CTkFrame(self.root, fg_color=THEME.colors.bg_primary)
         container.pack(fill=tk.BOTH, expand=True)
 
+        # Left Sidebar
         left_pane = self._create_left_pane(container)
-        left_pane.pack(side=tk.LEFT, fill=tk.BOTH, padx=(20, 12), pady=20)
+        left_pane.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=0)
 
-        separator = ctk.CTkFrame(container, width=1)
-        separator.pack(side=tk.LEFT, fill=tk.Y, pady=20)
+        # Separator
+        separator = ctk.CTkFrame(container, width=1, fg_color=THEME.colors.border_primary)
+        separator.pack(side=tk.LEFT, fill=tk.Y, pady=0)
 
+        # Right Content Area
         right_pane = self._create_right_pane(container)
-        right_pane.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(12, 20), pady=20)
+        right_pane.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=THEME.spacing.pad_lg, pady=THEME.spacing.pad_lg)
 
     def _create_left_pane(self, parent):
         """Create left sidebar with controls."""
-        pane = ctk.CTkFrame(parent, width=380)
+        pane = ctk.CTkFrame(parent, width=400, fg_color=THEME.colors.bg_secondary, corner_radius=0)
         pane.pack_propagate(False)
 
-        # Create scrollable frame
-        scrollable = ctk.CTkScrollableFrame(pane, fg_color="transparent")
-        scrollable.pack(fill=tk.BOTH, expand=True)
+        # Content container (no scrollbar)
+        content = ctk.CTkFrame(pane, fg_color="transparent")
+        content.pack(fill=tk.BOTH, expand=True, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
 
         # Header section
-        header = ctk.CTkFrame(scrollable, fg_color="transparent")
-        header.pack(fill=tk.X, pady=(0, 16), padx=20)
+        header = ctk.CTkFrame(content, fg_color="transparent")
+        header.pack(fill=tk.X, pady=(0, THEME.spacing.pad_lg))
 
         title = Label(header, text="ANONATOR", variant="heading")
         title.pack(anchor='w')
 
         subtitle = Label(header, text="Video Face Anonymization", variant="secondary")
-        subtitle.pack(anchor='w', pady=(4, 0))
+        subtitle.pack(anchor='w', pady=(2, 0))
 
-        # Card spacing
-        card_spacing = 12
+        # Card spacing - Reduced
+        card_spacing = THEME.spacing.pad_base
 
-        file_card = Card(scrollable)
-        file_card.pack(fill=tk.X, pady=(0, card_spacing), padx=20)
+        # Input Section
+        file_card = Card(content)
+        file_card.pack(fill=tk.X, pady=(0, card_spacing))
         self._create_file_section(file_card)
 
-        settings_card = Card(scrollable)
-        settings_card.pack(fill=tk.X, pady=(0, card_spacing), padx=20)
+        # Settings Section
+        settings_card = Card(content)
+        settings_card.pack(fill=tk.X, pady=(0, card_spacing))
         self._create_settings_section(settings_card)
 
-        hipaa_card = Card(scrollable)
-        hipaa_card.pack(fill=tk.X, pady=(0, card_spacing), padx=20)
+        # HIPAA Section
+        hipaa_card = Card(content)
+        hipaa_card.pack(fill=tk.X, pady=(0, card_spacing))
         self._create_hipaa_section(hipaa_card)
+
+        # System Info Section (New)
+        system_card = Card(content)
+        system_card.pack(fill=tk.X, pady=(0, card_spacing))
+        self._create_system_section(system_card)
 
         return pane
 
     def _create_file_section(self, parent):
         """Create file selection section."""
         section = ctk.CTkFrame(parent, fg_color="transparent")
-        section.pack(fill=tk.BOTH, padx=16, pady=16)
+        section.pack(fill=tk.BOTH, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
 
-        SectionLabel(section, text="Input File").pack(anchor='w', pady=(0, 8))
+        SectionLabel(section, text="Input File").pack(anchor='w', pady=(0, THEME.spacing.pad_sm))
 
-        self.drop_zone = DropZone(section, height=80)
-        self.drop_zone.pack(fill=tk.X, pady=(0, 10))
+        self.drop_zone = DropZone(section, height=90)
+        self.drop_zone.pack(fill=tk.X, pady=(0, THEME.spacing.pad_sm))
         self.drop_zone.label.bind('<Button-1>', lambda e: self._browse_file())
         self.drop_zone.hint.bind('<Button-1>', lambda e: self._browse_file())
         self.drop_zone.pack_propagate(False)
@@ -104,18 +125,18 @@ class MainWindow:
     def _create_settings_section(self, parent):
         """Create settings section."""
         section = ctk.CTkFrame(parent, fg_color="transparent")
-        section.pack(fill=tk.BOTH, padx=16, pady=16)
+        section.pack(fill=tk.BOTH, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
 
-        SectionLabel(section, text="Processing Settings").pack(anchor='w', pady=(0, 8))
+        SectionLabel(section, text="Processing Settings").pack(anchor='w', pady=(0, THEME.spacing.pad_base))
 
         # Grid layout for settings
         settings_grid = ctk.CTkFrame(section, fg_color="transparent")
-        settings_grid.pack(fill=tk.X, pady=(0, 8))
+        settings_grid.pack(fill=tk.X, pady=(0, THEME.spacing.pad_base))
         settings_grid.columnconfigure(0, weight=0)
         settings_grid.columnconfigure(1, weight=1)
 
         # Mode
-        FieldLabel(settings_grid, text="Anonymization Mode").grid(row=0, column=0, sticky='w', pady=(0, 8), padx=(0, 12))
+        FieldLabel(settings_grid, text="Anonymization Mode").grid(row=0, column=0, sticky='w', pady=(0, THEME.spacing.pad_sm), padx=(0, THEME.spacing.pad_base))
 
         self.mode_var = tk.StringVar(value=STANDARD_MODE.anonymization_mode)
         mode_options = ["blur", "solid", "mosaic"]
@@ -123,26 +144,34 @@ class MainWindow:
             settings_grid,
             variable=self.mode_var,
             values=mode_options,
-            width=140,
-            corner_radius=8
+            width=150,
+            height=32,
+            corner_radius=THEME.spacing.radius_base,
+            fg_color=THEME.colors.bg_tertiary,
+            button_color=THEME.colors.bg_tertiary,
+            button_hover_color=THEME.colors.bg_hover,
+            text_color=THEME.colors.text_primary,
+            dropdown_fg_color=THEME.colors.bg_secondary,
+            dropdown_text_color=THEME.colors.text_primary,
+            dropdown_hover_color=THEME.colors.bg_hover
         )
-        self.mode_menu.grid(row=0, column=1, sticky='ew', pady=(0, 8))
+        self.mode_menu.grid(row=0, column=1, sticky='ew', pady=(0, THEME.spacing.pad_sm))
 
         # Threshold
-        FieldLabel(settings_grid, text="Detection Threshold").grid(row=1, column=0, sticky='w', pady=(0, 8), padx=(0, 12))
+        FieldLabel(settings_grid, text="Detection Threshold").grid(row=1, column=0, sticky='w', pady=(0, THEME.spacing.pad_sm), padx=(0, THEME.spacing.pad_base))
 
         self.threshold_var = tk.DoubleVar(value=STANDARD_MODE.detection_threshold)
-        self.threshold_entry = Entry(settings_grid, textvariable=self.threshold_var, width=140)
-        self.threshold_entry.grid(row=1, column=1, sticky='ew', pady=(0, 8))
+        self.threshold_entry = Entry(settings_grid, textvariable=self.threshold_var, width=150)
+        self.threshold_entry.grid(row=1, column=1, sticky='ew', pady=(0, THEME.spacing.pad_sm))
 
         # Mask Scale
-        FieldLabel(settings_grid, text="Mask Scale").grid(row=2, column=0, sticky='w', padx=(0, 12))
+        FieldLabel(settings_grid, text="Mask Scale").grid(row=2, column=0, sticky='w', padx=(0, THEME.spacing.pad_base))
 
         self.mask_scale_var = tk.DoubleVar(value=STANDARD_MODE.mask_scale)
-        self.mask_scale_entry = Entry(settings_grid, textvariable=self.mask_scale_var, width=140)
+        self.mask_scale_entry = Entry(settings_grid, textvariable=self.mask_scale_var, width=150)
         self.mask_scale_entry.grid(row=2, column=1, sticky='ew')
 
-        Separator(section).pack(fill=tk.X, pady=10)
+        Separator(section).pack(fill=tk.X, pady=THEME.spacing.pad_base)
 
         # Checkboxes
         check_frame = ctk.CTkFrame(section, fg_color="transparent")
@@ -153,32 +182,40 @@ class MainWindow:
             check_frame,
             text="Multi-Pass Detection",
             variable=self.multi_pass_var,
-            font=("Segoe UI", 12)
+            font=(THEME.typography.font_family, THEME.typography.size_sm),
+            fg_color=THEME.colors.accent_primary,
+            hover_color=THEME.colors.accent_hover,
+            border_color=THEME.colors.border_secondary,
+            text_color=THEME.colors.text_primary
         )
-        self.multi_pass_check.pack(anchor='w', pady=(0, 6))
+        self.multi_pass_check.pack(anchor='w', pady=(0, THEME.spacing.pad_sm))
 
         self.keep_audio_var = tk.BooleanVar(value=STANDARD_MODE.keep_audio)
         self.keep_audio_check = ctk.CTkCheckBox(
             check_frame,
             text="Keep Audio Track",
             variable=self.keep_audio_var,
-            font=("Segoe UI", 12)
+            font=(THEME.typography.font_family, THEME.typography.size_sm),
+            fg_color=THEME.colors.accent_primary,
+            hover_color=THEME.colors.accent_hover,
+            border_color=THEME.colors.border_secondary,
+            text_color=THEME.colors.text_primary
         )
         self.keep_audio_check.pack(anchor='w')
 
     def _create_hipaa_section(self, parent):
         """Create HIPAA mode section."""
         section = ctk.CTkFrame(parent, fg_color="transparent")
-        section.pack(fill=tk.BOTH, padx=16, pady=16)
+        section.pack(fill=tk.BOTH, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
 
         header = ctk.CTkFrame(section, fg_color="transparent")
-        header.pack(fill=tk.X, pady=(0, 6))
+        header.pack(fill=tk.X, pady=(0, THEME.spacing.pad_sm))
 
         hipaa_label = ctk.CTkLabel(
             header,
             text="HIPAA Mode",
-            font=("Segoe UI", 16, "bold"),
-            text_color="#C17B5F"
+            font=(THEME.typography.font_family, THEME.typography.size_lg, "bold"),
+            text_color=THEME.colors.text_primary  # Changed from hipaa color to text_primary
         )
         hipaa_label.pack(side=tk.LEFT)
 
@@ -187,24 +224,58 @@ class MainWindow:
             header,
             text="",
             variable=self.hipaa_mode_var,
-            command=self._on_hipaa_mode_toggle
+            command=self._on_hipaa_mode_toggle,
+            progress_color=THEME.colors.accent_primary, # Changed from hipaa color to accent_primary
+            button_color=THEME.colors.text_primary,
+            button_hover_color=THEME.colors.text_secondary
         )
         self.hipaa_mode_check.pack(side=tk.RIGHT)
 
         warning = ctk.CTkLabel(
             section,
             text="Ultra-sensitive detection for medical compliance",
-            font=("Segoe UI", 10),
+            font=(THEME.typography.font_family, THEME.typography.size_xs),
+            text_color=THEME.colors.text_secondary,
             anchor='w'
         )
         warning.pack(anchor='w')
 
         self._on_hipaa_mode_toggle()
 
+    def _create_system_section(self, parent):
+        """Create system info section."""
+        section = ctk.CTkFrame(parent, fg_color="transparent")
+        section.pack(fill=tk.BOTH, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
+
+        SectionLabel(section, text="System Info").pack(anchor='w', pady=(0, THEME.spacing.pad_sm))
+
+        # Grid for info
+        info_grid = ctk.CTkFrame(section, fg_color="transparent")
+        info_grid.pack(fill=tk.X)
+        info_grid.columnconfigure(0, weight=0)
+        info_grid.columnconfigure(1, weight=1)
+
+        # Device
+        FieldLabel(info_grid, text="Device:").grid(row=0, column=0, sticky='w', padx=(0, THEME.spacing.pad_sm))
+        
+        device_name = "CPU"
+        if TORCH_AVAILABLE and torch.cuda.is_available():
+            device_name = f"GPU ({torch.cuda.get_device_name(0)})"
+        
+        Label(info_grid, text=device_name, variant="secondary").grid(row=0, column=1, sticky='w')
+
+        # OS
+        FieldLabel(info_grid, text="OS:").grid(row=1, column=0, sticky='w', padx=(0, THEME.spacing.pad_sm))
+        Label(info_grid, text=f"{platform.system()} {platform.release()}", variant="secondary").grid(row=1, column=1, sticky='w')
+
+        # Python
+        FieldLabel(info_grid, text="Python:").grid(row=2, column=0, sticky='w', padx=(0, THEME.spacing.pad_sm))
+        Label(info_grid, text=platform.python_version(), variant="secondary").grid(row=2, column=1, sticky='w')
+
     def _create_actions_section(self, parent):
         """Create action buttons section."""
         section = ctk.CTkFrame(parent, fg_color="transparent")
-        section.pack(fill=tk.BOTH, padx=20, pady=20)
+        section.pack(fill=tk.BOTH, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
 
         self.start_button = Button(
             section,
@@ -213,7 +284,7 @@ class MainWindow:
             command=self._start_processing,
             state=tk.DISABLED
         )
-        self.start_button.pack(fill=tk.X, pady=(0, 10))
+        self.start_button.pack(fill=tk.X, pady=(0, THEME.spacing.pad_sm))
 
         self.cancel_button = Button(
             section,
@@ -227,29 +298,42 @@ class MainWindow:
     def _create_progress_section(self, parent):
         """Create progress section."""
         section = ctk.CTkFrame(parent, fg_color="transparent")
-        section.pack(fill=tk.BOTH, padx=20, pady=20)
+        section.pack(fill=tk.BOTH, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
 
-        SectionLabel(section, text="Progress").pack(anchor='w', pady=(0, 10))
+        SectionLabel(section, text="Progress").pack(anchor='w', pady=(0, THEME.spacing.pad_sm))
 
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ctk.CTkProgressBar(
             section,
             variable=self.progress_var,
             mode='determinate',
-            height=8
+            height=8,
+            corner_radius=THEME.spacing.radius_sm,
+            fg_color=THEME.colors.bg_tertiary,
+            progress_color=THEME.colors.accent_primary
         )
         self.progress_bar.set(0)
-        self.progress_bar.pack(fill=tk.X, pady=(0, 8))
+        self.progress_bar.pack(fill=tk.X, pady=(0, THEME.spacing.pad_sm))
 
         self.progress_label = Label(section, text="Ready", variant="secondary")
         self.progress_label.pack(anchor='w')
+
+    def _create_log_section(self, parent):
+        """Create processing log section."""
+        section = ctk.CTkFrame(parent, fg_color="transparent")
+        section.pack(fill=tk.BOTH, expand=True, padx=THEME.spacing.pad_base, pady=THEME.spacing.pad_base)
+
+        SectionLabel(section, text="Processing Details").pack(anchor='w', pady=(0, THEME.spacing.pad_sm))
+
+        self.log_box = LogBox(section, height=100)
+        self.log_box.pack(fill=tk.BOTH, expand=True)
 
     def _create_right_pane(self, parent):
         """Create right pane with video preview."""
         pane = ctk.CTkFrame(parent, fg_color="transparent")
 
         title = Label(pane, text="Preview", variant="heading")
-        title.pack(anchor='w', pady=(0, 16))
+        title.pack(anchor='w', pady=(0, THEME.spacing.pad_lg))
 
         # Grid container for 2x2 layout
         grid = ctk.CTkFrame(pane, fg_color="transparent")
@@ -262,25 +346,29 @@ class MainWindow:
 
         # Row 1: Frame viewers
         frame_viewer_container = ctk.CTkFrame(grid, fg_color="transparent")
-        frame_viewer_container.grid(row=0, column=0, columnspan=2, sticky='nsew', pady=(0, 16))
+        frame_viewer_container.grid(row=0, column=0, columnspan=2, sticky='nsew', pady=(0, THEME.spacing.pad_lg))
         self.frame_viewer = FrameComparisonViewer(frame_viewer_container)
         self.frame_viewer.container.pack(fill=tk.BOTH, expand=True)
 
         # Row 2 Left: Actions and Progress
         actions_progress_frame = ctk.CTkFrame(grid, fg_color="transparent")
-        actions_progress_frame.grid(row=1, column=0, sticky='nsew', padx=(0, 8))
+        actions_progress_frame.grid(row=1, column=0, sticky='nsew', padx=(0, THEME.spacing.pad_sm))
 
         actions_card = Card(actions_progress_frame)
-        actions_card.pack(fill=tk.X, pady=(0, 12))
+        actions_card.pack(fill=tk.X, pady=(0, THEME.spacing.pad_lg))
         self._create_actions_section(actions_card)
 
         progress_card = Card(actions_progress_frame)
-        progress_card.pack(fill=tk.X)
+        progress_card.pack(fill=tk.X, pady=(0, THEME.spacing.pad_lg))
         self._create_progress_section(progress_card)
+
+        log_card = Card(actions_progress_frame)
+        log_card.pack(fill=tk.BOTH, expand=True)
+        self._create_log_section(log_card)
 
         # Row 2 Right: Video Player
         video_frame = ctk.CTkFrame(grid, fg_color="transparent")
-        video_frame.grid(row=1, column=1, sticky='nsew', padx=(8, 0))
+        video_frame.grid(row=1, column=1, sticky='nsew', padx=(THEME.spacing.pad_sm, 0))
         self.video_player = VideoPlayer(video_frame)
         self.video_player.container.pack(fill=tk.BOTH, expand=True)
 
@@ -292,8 +380,6 @@ class MainWindow:
                 self.drop_zone.drop_target_register(DND_FILES)
                 self.drop_zone.dnd_bind('<<Drop>>', self._on_drop)
             except Exception:
-                # CustomTkinter doesn't support tkinterdnd2
-                # Users can still use the browse button
                 pass
 
     def _on_drop(self, event):
@@ -350,6 +436,7 @@ class MainWindow:
         self.file_label.configure(text=f"{file_path.name}")
         self.start_button.configure(state=tk.NORMAL)
         self.drop_zone.set_text(f"Selected: {file_path.name}")
+        self._log(f"Loaded file: {file_path.name}")
 
     def _start_processing(self):
         if not self.input_path:
@@ -360,6 +447,7 @@ class MainWindow:
         self.cancel_button.configure(state=tk.NORMAL)
         self.progress_var.set(0)
         self.progress_label.configure(text="Starting...")
+        self._log("Starting processing...")
 
         self.processor.process_video(
             input_path=self.input_path,
@@ -375,6 +463,7 @@ class MainWindow:
         self.processor.cancel()
         self.progress_label.configure(text="Cancelling...")
         self.cancel_button.configure(state=tk.DISABLED)
+        self._log("Processing cancelled by user.")
 
     def _on_progress(self, progress_data: ProgressData):
         self.progress_queue.put(('progress', progress_data))
@@ -391,8 +480,9 @@ class MainWindow:
             self.root.after(100, self._poll_queue)
 
     def _update_ui_progress(self, progress_data: ProgressData):
-        progress_percent = (progress_data.frame_number / progress_data.total_frames) * 100
-        self.progress_var.set(progress_percent)
+        # CustomTkinter progress bar expects value between 0 and 1
+        progress_value = progress_data.frame_number / progress_data.total_frames
+        self.progress_var.set(progress_value)
 
         elapsed_min = int(progress_data.elapsed_time // 60)
         elapsed_sec = int(progress_data.elapsed_time % 60)
@@ -413,6 +503,9 @@ class MainWindow:
         )
         self.progress_label.configure(text=status_text)
 
+        if progress_data.frame_number % 30 == 0:
+             self._log(f"Processed frame {progress_data.frame_number}/{progress_data.total_frames} ({progress_value * 100:.1f}%)")
+
         if progress_data.original_frame.size > 0:
             self.frame_viewer.update_frames(
                 progress_data.original_frame,
@@ -427,11 +520,23 @@ class MainWindow:
         self.start_button.configure(state=tk.NORMAL)
         self.cancel_button.configure(state=tk.DISABLED)
         self.progress_label.configure(text="Complete!")
+        self._log("Processing complete!")
 
         if self.output_path:
             self.video_player.load_video(self.output_path)
+            self._log(f"Video saved to: {self.output_path}")
 
-        messagebox.showinfo("Success", f"Video saved to:\n{self.output_path}")
+        CustomAlertDialog(
+            self.root,
+            title="Processing Complete",
+            message=f"Video has been successfully anonymized and saved to:\n\n{self.output_path}",
+            on_ok=lambda: self._log("User acknowledged completion.")
+        )
+
+    def _log(self, message):
+        if hasattr(self, 'log_box'):
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            self.log_box.log(f"[{timestamp}] {message}")
 
     def _on_close(self):
         """Cleanup resources before closing."""

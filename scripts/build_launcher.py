@@ -181,7 +181,8 @@ Thank you for downloading Anonator!
 ## First-Time Setup
 
 The launcher will:
-- Download Python (embedded, ~25MB)
+- Download UV package manager (~10MB)
+- Install Python 3.11.9 automatically via UV
 - Create a virtual environment
 - Install dependencies (~500MB-1GB)
 - Download selected face detection models

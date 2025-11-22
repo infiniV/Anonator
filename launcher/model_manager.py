@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import List, Dict, Optional, Callable
 import subprocess
 
-from .config import MODEL_REGISTRY, MODELS_DIR
-from .utils import get_pip_path, run_command, ensure_directory
+from .config import MODEL_REGISTRY, MODELS_DIR, APP_DATA_DIR
+from .utils import get_uv_path, run_command, ensure_directory
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class ModelManager:
 
         logger.info(f"Installing dependencies for {model_name}: {dependencies}")
 
-        pip_path = get_pip_path(self.venv_dir)
+        uv_path = get_uv_path(APP_DATA_DIR)
 
         try:
             for i, dep in enumerate(dependencies):
@@ -142,11 +142,13 @@ class ModelManager:
 
                 logger.info(f"Installing {dep}")
 
-                # Use pip to install
+                # Use uv to install
                 run_command([
-                    str(pip_path),
+                    str(uv_path),
+                    "pip",
                     "install",
-                    "--no-warn-script-location",
+                    "--python",
+                    str(self.venv_dir),
                     dep
                 ])
 

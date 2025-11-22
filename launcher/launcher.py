@@ -14,13 +14,12 @@ from tkinter import messagebox
 
 from .config import (
     VERSION, APP_NAME, APP_DATA_DIR, VENV_DIR, PYTHON_DIR, MODELS_DIR,
-    CACHE_DIR, CONFIG_FILE, LOG_FILE, PYTHON_VERSION, PYTHON_URLS,
-    GET_PIP_URL, MODEL_REGISTRY, CORE_DEPENDENCIES, TORCH_CPU, TORCH_GPU
+    CACHE_DIR, CONFIG_FILE, LOG_FILE, PYTHON_VERSION, UV_VERSION, UV_URLS,
+    MODEL_REGISTRY, CORE_DEPENDENCIES, CUSTOM_GIT_DEPENDENCIES, TORCH_CPU, TORCH_GPU
 )
 from .utils import (
-    download_file, extract_archive, detect_cuda, get_pip_path,
-    get_python_path, get_venv_python_path, run_command, format_size,
-    ensure_directory
+    download_file, extract_archive, detect_cuda, get_uv_path,
+    get_venv_python_path, run_command, format_size, ensure_directory
 )
 from .model_manager import ModelManager
 
@@ -375,7 +374,7 @@ class AnonatorLauncher(ctk.CTk):
         response = messagebox.askyesno(
             "Confirm Installation",
             f"This will download and install:\n\n"
-            f"- Python {PYTHON_VERSION} (embedded)\n"
+            f"- UV package manager and Python {PYTHON_VERSION}\n"
             f"- Core dependencies (~500 MB)\n"
             f"- {len(self.selected_models)} face detection model(s) (~{total_size_mb} MB)\n\n"
             f"Installation directory: {APP_DATA_DIR}\n\n"
@@ -412,11 +411,11 @@ class AnonatorLauncher(ctk.CTk):
             ensure_directory(APP_DATA_DIR)
             ensure_directory(CACHE_DIR)
 
-            # Step 1: Download Python (Windows only)
+            # Step 1: Install UV package manager
             if not self._check_cancelled():
-                self._install_python()
+                self._install_uv()
 
-            # Step 2: Create virtual environment
+            # Step 2: Create virtual environment with uv
             if not self._check_cancelled():
                 self._create_venv()
 
@@ -428,11 +427,15 @@ class AnonatorLauncher(ctk.CTk):
             if not self._check_cancelled():
                 self._install_pytorch()
 
-            # Step 5: Install model dependencies
+            # Step 5: Install custom dependencies
+            if not self._check_cancelled():
+                self._install_custom_dependencies()
+
+            # Step 6: Install model dependencies
             if not self._check_cancelled():
                 self._install_models()
 
-            # Step 6: Save configuration
+            # Step 7: Save configuration
             if not self._check_cancelled():
                 self._save_config()
 
@@ -473,95 +476,64 @@ class AnonatorLauncher(ctk.CTk):
         """
         return self.installation_cancelled
 
-    def _install_python(self):
-        """Download and extract embedded Python (Windows only)."""
-        if sys.platform != "win32":
-            self._log("Using system Python on Linux/macOS")
+    def _install_uv(self):
+        """Download and install UV package manager."""
+        uv_exe = get_uv_path(APP_DATA_DIR)
+
+        # Check if UV is already installed
+        if uv_exe.exists():
+            self._log(f"UV v{UV_VERSION} already installed")
             return
 
-        self._update_status("Downloading Python...", 0.05)
-        self._log(f"Downloading Python {PYTHON_VERSION}...")
+        self._update_status("Downloading UV package manager...", 0.05)
+        self._log(f"Downloading UV v{UV_VERSION}...")
 
-        python_url = PYTHON_URLS["win32"]
-        python_zip = CACHE_DIR / "python.zip"
+        uv_url = UV_URLS.get(sys.platform)
+        if not uv_url:
+            raise RuntimeError(f"UV not supported on platform: {sys.platform}")
 
-        def progress(downloaded, total):
-            if total > 0:
-                pct = downloaded / total
-                self._update_status(
-                    f"Downloading Python... {format_size(downloaded)} / {format_size(total)}",
-                    0.05 + (pct * 0.10)
-                )
+        uv_archive = CACHE_DIR / f"uv-{UV_VERSION}.{'zip' if sys.platform == 'win32' else 'tar.gz'}"
 
-        download_file(python_url, python_zip, progress)
-
-        self._update_status("Extracting Python...", 0.15)
-        self._log("Extracting Python...")
-
-        extract_archive(python_zip, PYTHON_DIR)
-        python_zip.unlink()
-
-        # Enable site-packages for embedded Python by uncommenting import site
-        pth_file = PYTHON_DIR / f"python{PYTHON_VERSION.replace('.', '')[:3]}._pth"
-        if pth_file.exists():
-            self._log("Enabling site-packages in embedded Python...")
-            content = pth_file.read_text()
-            # Uncomment "import site" if it's commented
-            content = content.replace("#import site", "import site")
-            # Add "import site" if not present
-            if "import site" not in content:
-                content += "\nimport site\n"
-            pth_file.write_text(content)
-
-        self._log("Python installed successfully")
-
-    def _create_venv(self):
-        """Create virtual environment."""
-        self._update_status("Creating virtual environment...", 0.20)
-        self._log("Creating virtual environment...")
-
-        if sys.platform == "win32":
-            python_exe = get_python_path(PYTHON_DIR)
-        else:
-            python_exe = "python3"
-
-        # Install pip in embedded Python (Windows)
-        if sys.platform == "win32":
-            self._log("Installing pip...")
-            get_pip_script = CACHE_DIR / "get-pip.py"
-
+        # Only download if not cached
+        if not uv_archive.exists():
             def progress(downloaded, total):
                 if total > 0:
-                    self._update_status(f"Downloading pip... {int(downloaded/total*100)}%", 0.22)
+                    pct = downloaded / total
+                    self._update_status(
+                        f"Downloading UV... {format_size(downloaded)} / {format_size(total)}",
+                        0.05 + (pct * 0.10)
+                    )
 
-            download_file(GET_PIP_URL, get_pip_script, progress)
-            run_command([str(python_exe), str(get_pip_script)])
-            get_pip_script.unlink()
-
-            # Install virtualenv (embedded Python doesn't have venv module)
-            self._log("Installing virtualenv...")
-            run_command([str(python_exe), "-m", "pip", "install", "virtualenv"])
-
-            # Create venv using virtualenv
-            self._log("Creating virtual environment with virtualenv...")
-            run_command([str(python_exe), "-m", "virtualenv", str(VENV_DIR)])
+            download_file(uv_url, uv_archive, progress)
         else:
-            # Use built-in venv on Linux/macOS
-            self._log("Creating virtual environment with venv...")
-            run_command([str(python_exe), "-m", "venv", str(VENV_DIR)])
+            self._log(f"Using cached UV archive: {uv_archive}")
+
+        self._update_status("Extracting UV...", 0.15)
+        self._log("Extracting UV...")
+
+        extract_archive(uv_archive, APP_DATA_DIR)
+        # Keep the archive cached for future use
+
+        self._log("UV installed successfully")
+
+    def _create_venv(self):
+        """Create virtual environment with uv."""
+        self._update_status("Creating virtual environment...", 0.20)
+        self._log("Creating virtual environment with uv...")
+
+        uv_exe = get_uv_path(APP_DATA_DIR)
+
+        # Create venv with uv (automatically installs Python if needed)
+        run_command([str(uv_exe), "venv", str(VENV_DIR), "--python", PYTHON_VERSION])
 
         self._log("Virtual environment created")
 
     def _install_core_dependencies(self):
-        """Install core dependencies."""
+        """Install core dependencies with uv."""
         self._update_status("Installing core dependencies...", 0.30)
         self._log("Installing core dependencies...")
 
-        pip_exe = get_pip_path(VENV_DIR)
-
-        # Upgrade pip first
-        self._log("Upgrading pip...")
-        run_command([str(pip_exe), "install", "--upgrade", "pip"])
+        uv_exe = get_uv_path(APP_DATA_DIR)
 
         # Install core dependencies
         total = len(CORE_DEPENDENCIES)
@@ -573,12 +545,12 @@ class AnonatorLauncher(ctk.CTk):
             self._update_status(f"Installing {dep}...", progress)
             self._log(f"Installing {dep}...")
 
-            run_command([str(pip_exe), "install", "--no-warn-script-location", dep])
+            run_command([str(uv_exe), "pip", "install", "--python", str(VENV_DIR), dep])
 
         self._log("Core dependencies installed")
 
     def _install_pytorch(self):
-        """Install PyTorch (CPU or GPU based on detection)."""
+        """Install PyTorch (CPU or GPU based on detection) with uv."""
         self._update_status("Detecting GPU...", 0.50)
         self._log("Detecting GPU...")
 
@@ -593,15 +565,53 @@ class AnonatorLauncher(ctk.CTk):
 
         self._update_status("Installing PyTorch (this may take a few minutes)...", 0.55)
 
-        pip_exe = get_pip_path(VENV_DIR)
+        uv_exe = get_uv_path(APP_DATA_DIR)
 
-        run_command([str(pip_exe), "install"] + torch_deps, timeout=600)
+        run_command([str(uv_exe), "pip", "install", "--python", str(VENV_DIR)] + torch_deps, timeout=600)
 
         self._log("PyTorch installed successfully")
 
+    def _install_custom_dependencies(self):
+        """Install custom git dependencies and the app itself."""
+        self._update_status("Installing custom dependencies...", 0.60)
+        self._log("Installing custom dependencies...")
+
+        uv_exe = get_uv_path(APP_DATA_DIR)
+
+        # First, install setuptools (required for building git packages with --no-build-isolation)
+        self._log("Installing setuptools...")
+        run_command([str(uv_exe), "pip", "install", "--python", str(VENV_DIR), "setuptools"], timeout=300)
+
+        # Install custom git packages with --no-build-isolation
+        for dep in CUSTOM_GIT_DEPENDENCIES:
+            if self._check_cancelled():
+                return
+
+            self._log(f"Installing {dep} (this may take a few minutes)...")
+            run_command([str(uv_exe), "pip", "install", "--python", str(VENV_DIR), "--no-build-isolation", dep], timeout=600)
+
+        # Install the app itself in editable mode
+        # Find the app source directory
+        if getattr(sys, 'frozen', False):
+            # Running as compiled executable
+            exe_dir = Path(sys.executable).parent
+            app_source_dir = exe_dir.parent / "anonator_app"
+        else:
+            # Running in development mode
+            app_source_dir = Path(__file__).parent.parent
+
+        if app_source_dir.exists() and (app_source_dir / "pyproject.toml").exists():
+            self._log(f"Installing Anonator app from {app_source_dir}...")
+            run_command([str(uv_exe), "pip", "install", "--python", str(VENV_DIR), "-e", str(app_source_dir)], timeout=600)
+            self._log("Anonator app installed successfully")
+        else:
+            self._log(f"Warning: Could not find app source at {app_source_dir}")
+
+        self._log("Custom dependencies installed")
+
     def _install_models(self):
         """Install selected model dependencies."""
-        self._update_status("Installing model dependencies...", 0.70)
+        self._update_status("Installing model dependencies...", 0.75)
         self._log(f"Installing {len(self.selected_models)} model(s)...")
 
         # Initialize model manager
@@ -660,22 +670,170 @@ class AnonatorLauncher(ctk.CTk):
         try:
             # Get Python from venv
             python_exe = get_venv_python_path(VENV_DIR)
+            self._log(f"Python executable: {python_exe}")
+
+            if not python_exe.exists():
+                raise FileNotFoundError(f"Python executable not found at: {python_exe}")
 
             # Path to main app script
-            # Assuming launcher is distributed with app source or can find it
-            app_main = Path(__file__).parent.parent / "src" / "anonator" / "main.py"
+            # Check if running from PyInstaller bundle
+            if getattr(sys, 'frozen', False):
+                # Running as compiled executable
+                # Look for anonator_app relative to executable directory
+                exe_dir = Path(sys.executable).parent
+                self._log(f"Running from PyInstaller bundle. Executable dir: {exe_dir}")
+
+                app_main = exe_dir.parent / "anonator_app" / "src" / "anonator" / "main.py"
+                self._log(f"Trying path 1: {app_main}")
+
+                if not app_main.exists():
+                    # Try without parent (if in root of distribution)
+                    app_main = exe_dir / "anonator_app" / "src" / "anonator" / "main.py"
+                    self._log(f"Trying path 2: {app_main}")
+            else:
+                # Running in development mode
+                self._log(f"Running in development mode. __file__: {__file__}")
+                app_main = Path(__file__).parent.parent / "src" / "anonator" / "main.py"
+                self._log(f"Trying path 1: {app_main}")
+
+                if not app_main.exists():
+                    # Try alternative location
+                    app_main = Path(__file__).parent / "anonator_app" / "main.py"
+                    self._log(f"Trying path 2: {app_main}")
 
             if not app_main.exists():
-                # Try alternative location (if packaged)
-                app_main = Path(__file__).parent / "anonator_app" / "main.py"
+                error_msg = (
+                    f"Cannot find main.py at {app_main}\n\n"
+                    "Please ensure you downloaded the full Anonator setup package, "
+                    "not just the launcher. The anonator_app folder with the application "
+                    "source code should be in the same directory as the launcher."
+                )
+                raise FileNotFoundError(error_msg)
 
-            if not app_main.exists():
-                raise FileNotFoundError(f"Cannot find main.py at {app_main}")
-
+            self._log(f"Found app at: {app_main}")
             self._log(f"Starting: {python_exe} {app_main}")
 
+            # Set working directory to src folder (parent of anonator)
+            # This allows imports like "from anonator.ui.main_window import MainWindow" to work
+            working_dir = app_main.parent.parent
+            self._log(f"Working directory: {working_dir}")
+
             # Launch app in new process
-            subprocess.Popen([str(python_exe), str(app_main)], cwd=app_main.parent)
+            # Check for debug mode (shows console for error diagnosis)
+            debug_mode = os.environ.get('ANONATOR_DEBUG', '0') == '1'
+
+            startupinfo = None
+            creationflags = 0
+            capture_output = True
+
+            if not debug_mode and sys.platform == "win32":
+                # Hide console window in normal mode
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                creationflags = subprocess.CREATE_NO_WINDOW
+            else:
+                # Debug mode: show console window
+                capture_output = False
+                self._log("Debug mode: Console window will be visible")
+
+            # Set up clean environment for the app
+            env = os.environ.copy()
+
+            # Set PYTHONPATH so Python can find the anonator module
+            env['PYTHONPATH'] = str(working_dir)
+            self._log(f"PYTHONPATH set to: {working_dir}")
+
+            # Remove any launcher-specific paths that could interfere
+            # This prevents Tcl/Tk version conflicts with the launcher's bundled files
+            if getattr(sys, 'frozen', False):
+                # Remove the launcher's _internal directory from PATH if present
+                launcher_internal = str(Path(sys.executable).parent / "_internal")
+                if 'PATH' in env:
+                    path_entries = env['PATH'].split(os.pathsep)
+                    path_entries = [p for p in path_entries if launcher_internal not in p]
+                    env['PATH'] = os.pathsep.join(path_entries)
+
+                # Clear Tcl/Tk environment variables that might point to launcher's bundled Tcl
+                for key in list(env.keys()):
+                    if key.startswith('TCL_') or key.startswith('TK_'):
+                        del env[key]
+
+                self._log("Cleaned launcher-specific environment variables")
+
+            # Create log files for app output
+            app_log_dir = APP_DATA_DIR / "app_logs"
+            app_log_dir.mkdir(exist_ok=True)
+
+            app_stdout_log = app_log_dir / "app_stdout.log"
+            app_stderr_log = app_log_dir / "app_stderr.log"
+
+            self._log(f"App output will be logged to: {app_log_dir}")
+
+            if capture_output:
+                # Open log files
+                stdout_file = open(app_stdout_log, 'w')
+                stderr_file = open(app_stderr_log, 'w')
+
+                proc = subprocess.Popen(
+                    [str(python_exe), str(app_main)],
+                    cwd=working_dir,
+                    env=env,
+                    startupinfo=startupinfo,
+                    creationflags=creationflags,
+                    stdout=stdout_file,
+                    stderr=stderr_file
+                )
+
+                # Store file handles to close later
+                proc._stdout_file = stdout_file
+                proc._stderr_file = stderr_file
+            else:
+                proc = subprocess.Popen(
+                    [str(python_exe), str(app_main)],
+                    cwd=working_dir,
+                    env=env,
+                    startupinfo=startupinfo,
+                    creationflags=creationflags
+                )
+
+            self._log(f"Process started with PID: {proc.pid}")
+
+            # Wait a moment to check if process crashes immediately
+            import time
+            time.sleep(2.0)  # Wait longer to catch startup errors
+
+            if proc.poll() is not None:
+                # Process already exited
+                error_msg = f"Application exited immediately with code {proc.returncode}\n\n"
+
+                if capture_output:
+                    # Close file handles and read logs
+                    if hasattr(proc, '_stdout_file'):
+                        proc._stdout_file.close()
+                        proc._stderr_file.close()
+
+                    # Read the log files
+                    if app_stderr_log.exists():
+                        with open(app_stderr_log, 'r') as f:
+                            stderr_content = f.read()
+                            if stderr_content:
+                                error_msg += f"Error output:\n{stderr_content}"
+
+                    if app_stdout_log.exists():
+                        with open(app_stdout_log, 'r') as f:
+                            stdout_content = f.read()
+                            if stdout_content:
+                                error_msg += f"\n\nStandard output:\n{stdout_content}"
+
+                    error_msg += f"\n\nFull logs available at:\n{app_stdout_log}\n{app_stderr_log}"
+                else:
+                    error_msg += "Run with ANONATOR_DEBUG=1 environment variable to see console output."
+
+                self._log(error_msg)
+                raise RuntimeError(error_msg)
+
+            # Process is running - inform user about log location
+            self._log(f"Note: App output is being logged to {app_log_dir}")
 
             # Close launcher
             self._log("Anonator launched successfully. Closing launcher...")
@@ -683,21 +841,43 @@ class AnonatorLauncher(ctk.CTk):
 
         except Exception as e:
             logger.exception("Failed to launch app")
+            self._log(f"ERROR: {e}")
             messagebox.showerror(
                 "Launch Failed",
-                f"Failed to launch Anonator:\n\n{e}"
+                f"Failed to launch Anonator:\n\n{e}\n\n"
+                f"Check the installation log above for details."
             )
 
 
 def main():
     """Entry point for launcher."""
-    # Set appearance to match main app
-    ctk.set_appearance_mode("dark")
-    # Don't set color theme - we use custom THEME colors
+    try:
+        # Set appearance to match main app
+        ctk.set_appearance_mode("dark")
+        # Don't set color theme - we use custom THEME colors
 
-    # Create and run launcher
-    app = AnonatorLauncher()
-    app.mainloop()
+        # Create and run launcher
+        app = AnonatorLauncher()
+        app.mainloop()
+    except Exception as e:
+        logger.exception("Fatal error in launcher")
+        # Show error dialog even if UI fails
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror(
+                "Launcher Error",
+                f"Failed to start launcher:\n\n{e}\n\n"
+                f"Check log file at:\n{LOG_FILE}"
+            )
+            root.destroy()
+        except:
+            # Last resort: print to console
+            print(f"FATAL ERROR: {e}")
+            print(f"Check log file at: {LOG_FILE}")
+            input("Press Enter to exit...")
 
 
 if __name__ == "__main__":

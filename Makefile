@@ -8,7 +8,7 @@ SRC_DIR = src/anonator
 TESTS_DIR = tests
 BUILD_DIR = build
 DIST_DIR = dist
-SPEC_FILE = anonator.spec
+RELEASE_DIR = release
 
 # Detect OS for cross-platform compatibility
 ifeq ($(OS),Windows_NT)
@@ -108,49 +108,54 @@ run: ## Run the application UI
 	$(VENV_PYTHON) $(SRC_DIR)/main.py
 
 .PHONY: build
-build: clean-build ## Build executable with PyInstaller
-	@echo "$(GREEN)Building $(PROJECT_NAME) executable...$(NC)"
-	@echo "$(YELLOW)This may take several minutes...$(NC)"
-	$(VENV_PYTHON) -m PyInstaller $(SPEC_FILE)
-	@echo "$(GREEN)Build completed! Executable: $(DIST_DIR)/$(PROJECT_NAME)/$(NC)"
+build: build-launcher ## Build progressive launcher distribution
+	@echo "$(GREEN)Build complete!$(NC)"
+	@echo "$(YELLOW)Output: release/AnonatorSetup.zip (26 MB)$(NC)"
+	@echo "$(YELLOW)Users download only 26MB, then install what they need$(NC)"
 
-.PHONY: build-onefile
-build-onefile: clean-build ## Build single-file executable (slower startup)
-	@echo "$(GREEN)Building single-file executable...$(NC)"
-	@echo "$(YELLOW)This may take several minutes...$(NC)"
-	$(VENV_PYTHON) -m PyInstaller $(SRC_DIR)/main.py --onefile --name $(PROJECT_NAME) --noconsole
-	@echo "$(GREEN)Build completed! Single executable: $(DIST_DIR)/$(PROJECT_NAME).exe$(NC)"
+.PHONY: build-launcher
+build-launcher: ## Build progressive launcher (same as 'make build')
+	@echo "$(GREEN)Building progressive launcher...$(NC)"
+	@echo "$(YELLOW)Output will be 26 MB (includes launcher + app source)$(NC)"
+	$(PYTHON) scripts/build_launcher.py
+	@echo "$(GREEN)Launcher built! Output: release/AnonatorSetup.zip$(NC)"
 
-.PHONY: build-debug
-build-debug: clean-build ## Build executable with console (for debugging)
-	@echo "$(GREEN)Building debug executable...$(NC)"
-	$(VENV_PYTHON) -m PyInstaller $(SRC_DIR)/main.py --onedir --name $(PROJECT_NAME) --console
-	@echo "$(GREEN)Debug build completed! Check $(DIST_DIR)/$(PROJECT_NAME)/$(NC)"
+.PHONY: test-launcher
+test-launcher: ## Test launcher system
+	@echo "$(GREEN)Testing launcher...$(NC)"
+	$(PYTHON) launcher/test_launcher.py
+	@echo "$(GREEN)Launcher tests completed!$(NC)"
 
 .PHONY: clean
-clean: clean-build clean-pyc clean-test ## Clean all build, test, and Python artifacts
+clean: clean-build clean-pyc clean-test clean-release ## Clean all build, test, and Python artifacts
 	@echo "$(GREEN)Cleaned all artifacts!$(NC)"
+
+.PHONY: clean-all
+clean-all: clean ## Alias for clean (remove all generated files)
+	@echo "$(GREEN)Complete cleanup done!$(NC)"
 
 .PHONY: clean-build
 clean-build: ## Remove build artifacts
 	@echo "$(YELLOW)Cleaning build artifacts...$(NC)"
-	@if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
-	@if exist $(DIST_DIR) rmdir /s /q $(DIST_DIR)
+	@$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(p, ignore_errors=True) for p in [pathlib.Path('$(BUILD_DIR)'), pathlib.Path('$(DIST_DIR)')]]"
 	@echo "$(GREEN)Build artifacts cleaned!$(NC)"
+
+.PHONY: clean-release
+clean-release: ## Remove release and installer outputs
+	@echo "$(YELLOW)Cleaning release artifacts...$(NC)"
+	@$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(p, ignore_errors=True) for p in [pathlib.Path('release'), pathlib.Path('installer_output')]]"
+	@echo "$(GREEN)Release artifacts cleaned!$(NC)"
 
 .PHONY: clean-pyc
 clean-pyc: ## Remove Python file artifacts
 	@echo "$(YELLOW)Cleaning Python artifacts...$(NC)"
-	@for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+	@$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__')]; [p.unlink() for p in pathlib.Path('.').rglob('*.pyc')]; [p.unlink() for p in pathlib.Path('.').rglob('*.pyo')]"
 	@echo "$(GREEN)Python artifacts cleaned!$(NC)"
 
 .PHONY: clean-test
 clean-test: ## Remove test and coverage artifacts
 	@echo "$(YELLOW)Cleaning test artifacts...$(NC)"
-	@if exist .pytest_cache rmdir /s /q .pytest_cache
-	@if exist .coverage del /q .coverage
-	@if exist htmlcov rmdir /s /q htmlcov
-	@if exist .benchmarks rmdir /s /q .benchmarks
+	@$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(p, ignore_errors=True) for p in [pathlib.Path('.pytest_cache'), pathlib.Path('htmlcov'), pathlib.Path('.benchmarks')]]; pathlib.Path('.coverage').unlink(missing_ok=True)"
 	@echo "$(GREEN)Test artifacts cleaned!$(NC)"
 
 .PHONY: lint
@@ -189,8 +194,9 @@ info: ## Show project information
 	@$(VENV_PYTHON) -m pip list | findstr "pytest torch face-detection opencv"
 
 .PHONY: all
-all: clean install-dev test build ## Clean, install, test, and build everything
+all: clean install-dev test build ## Clean, install, test, and build progressive launcher
 	@echo "$(GREEN)Complete build pipeline finished!$(NC)"
+	@echo "$(YELLOW)Distribution ready: release/AnonatorSetup.zip$(NC)"
 
 # Default target
 .DEFAULT_GOAL := help

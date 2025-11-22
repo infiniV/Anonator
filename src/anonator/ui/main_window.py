@@ -26,6 +26,12 @@ from anonator.core.config import HIPAA_MODE, STANDARD_MODE, PROCESSOR_CONFIG, PE
 from anonator.ui.widgets import Card, Button, Label, SectionLabel, FieldLabel, Entry, DropZone, Separator, LogBox, CustomAlertDialog
 from anonator.ui.theme import THEME
 
+try:
+    from anonator.utils.model_downloader import ensure_model_available
+    MODEL_DOWNLOADER_AVAILABLE = True
+except ImportError:
+    MODEL_DOWNLOADER_AVAILABLE = False
+
 
 class MainWindow:
     def __init__(self, root):
@@ -545,6 +551,21 @@ class MainWindow:
         # Reinitialize processor if model has changed
         selected_model = self.model_var.get()
         if PROCESSOR_CONFIG.detector_model != selected_model:
+            # Check if model is available (download if needed)
+            if MODEL_DOWNLOADER_AVAILABLE:
+                self._log(f"Checking model availability: {selected_model}")
+                if not ensure_model_available(selected_model, self.root, auto_download=True):
+                    self._log(f"Failed to ensure model {selected_model} is available")
+                    messagebox.showerror(
+                        "Model Not Available",
+                        f"Could not download or install {selected_model}.\n"
+                        "Please check your internet connection and try again."
+                    )
+                    self.is_processing = False
+                    self.start_button.configure(state=tk.NORMAL)
+                    self.cancel_button.configure(state=tk.DISABLED)
+                    return
+
             PROCESSOR_CONFIG.detector_model = selected_model
             self._log(f"Switching to model: {selected_model}")
             self.processor = VideoProcessor(progress_callback=self._on_progress)

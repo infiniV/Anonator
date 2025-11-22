@@ -27,6 +27,10 @@ MANIFEST
 *.manifest
 *.spec.bak
 
+# Build outputs
+release/
+installer_output/
+
 # Virtual environments
 .venv/
 venv/

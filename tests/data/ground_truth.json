@@ -245,91 +245,91 @@
     "faces": [
       {
         "bbox": [
-          58,
-          411,
-          78,
-          436
+          161,
+          273,
+          181,
+          298
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          596,
-          359,
-          616,
-          384
+          52,
+          173,
+          72,
+          198
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          378,
-          328,
-          398,
-          353
+          247,
+          176,
+          267,
+          201
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          610,
-          263,
-          630,
-          288
+          7,
+          83,
+          27,
+          108
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          616,
-          453,
-          636,
-          478
+          34,
+          139,
+          54,
+          164
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          599,
-          187,
-          619,
-          212
+          589,
+          133,
+          609,
+          158
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          159,
-          406,
-          179,
-          431
+          107,
+          280,
+          127,
+          305
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          21,
-          451,
-          41,
-          476
+          365,
+          23,
+          385,
+          48
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          318,
-          168,
-          338,
-          193
+          8,
+          291,
+          28,
+          316
         ],
         "difficulty": "hard_small"
       },
       {
         "bbox": [
-          160,
-          228,
-          180,
-          253
+          122,
+          85,
+          142,
+          110
         ],
         "difficulty": "hard_small"
       }

@@ -180,7 +180,11 @@ class MainWindow:
         FieldLabel(settings_grid, text="Detection Model").grid(row=3, column=0, sticky='w', padx=(0, THEME.spacing.pad_base))
 
         self.model_var = tk.StringVar(value=PROCESSOR_CONFIG.detector_model)
-        model_options = ["MediaPipe", "RetinaNetMobileNetV1", "RetinaNetResNet50", "DSFDDetector"]
+        model_options = [
+            "MediaPipe", "MTCNN", "SCRFD-10GF", "SCRFD-2.5GF", "SCRFD-34GF",
+            "YOLOv8-Face", "YOLO11-Face", "RetinaFace-MobileNet",
+            "RetinaNetMobileNetV1", "RetinaNetResNet50", "DSFDDetector"
+        ]
         self.model_menu = ctk.CTkOptionMenu(
             settings_grid,
             variable=self.model_var,

@@ -77,7 +77,9 @@ class ProcessorConfig:
     Technical parameters for face detection and video processing.
     """
 
-    # Face detector model: "MediaPipe", "RetinaNetResNet50", "RetinaNetMobileNetV1", "DSFDDetector"
+    # Face detector model options:
+    # New models: "MediaPipe", "MTCNN", "SCRFD-10GF", "SCRFD-2.5GF", "SCRFD-34GF", "YOLOv8-Face", "YOLO11-Face", "RetinaFace-MobileNet"
+    # Legacy models: "RetinaNetResNet50", "RetinaNetMobileNetV1", "DSFDDetector"
     detector_model: str = "MediaPipe"
 
     # Initial detector confidence threshold (will be overridden by mode settings)

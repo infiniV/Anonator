@@ -18,6 +18,7 @@ dependencies = [
     "onnxruntime-gpu>=1.20.2",
     "ultralytics>=8.3.230",
     "huggingface-hub>=1.1.5",
+    "retinaface-pytorch>=0.0.7",
 ]
 
 [project.optional-dependencies]

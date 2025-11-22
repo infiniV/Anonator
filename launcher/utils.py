@@ -128,11 +128,21 @@ def detect_cuda() -> bool:
         True if CUDA GPU is detected
     """
     try:
+        # Hide console window on Windows
+        startupinfo = None
+        creationflags = 0
+        if sys.platform == "win32":
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            creationflags = subprocess.CREATE_NO_WINDOW
+
         result = subprocess.run(
             ["nvidia-smi"],
             capture_output=True,
             timeout=5,
-            text=True
+            text=True,
+            startupinfo=startupinfo,
+            creationflags=creationflags
         )
 
         if result.returncode == 0:
@@ -145,6 +155,21 @@ def detect_cuda() -> bool:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         logger.info("nvidia-smi not found, assuming no GPU")
         return False
+
+
+def get_uv_path(install_dir: Path) -> Path:
+    """Get path to uv executable.
+
+    Args:
+        install_dir: Path to uv installation directory
+
+    Returns:
+        Path to uv executable
+    """
+    if sys.platform == "win32":
+        return install_dir / "uv.exe"
+    else:
+        return install_dir / "uv"
 
 
 def get_pip_path(venv_dir: Path) -> Path:
@@ -214,16 +239,30 @@ def run_command(
     """
     logger.info(f"Running command: {' '.join(str(c) for c in cmd)}")
 
-    result = subprocess.run(
-        cmd,
-        cwd=cwd,
-        timeout=timeout,
-        capture_output=capture_output,
-        text=True,
-        check=True
-    )
+    # Hide console window on Windows
+    startupinfo = None
+    creationflags = 0
+    if sys.platform == "win32":
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        creationflags = subprocess.CREATE_NO_WINDOW
 
-    return result
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            timeout=timeout,
+            capture_output=capture_output,
+            text=True,
+            check=True,
+            startupinfo=startupinfo,
+            creationflags=creationflags
+        )
+        return result
+    except subprocess.CalledProcessError as e:
+        if e.stderr:
+            logger.error(f"Command failed with stderr: {e.stderr}")
+        raise
 
 
 def get_installed_size(path: Path) -> int:

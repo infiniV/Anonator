@@ -35,7 +35,7 @@ PYTHON_URLS = {
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 
 # UV (fast Python package installer) version and URL
-UV_VERSION = "0.4.18"
+UV_VERSION = "0.9.11"
 UV_URLS = {
     "win32": f"https://github.com/astral-sh/uv/releases/download/{UV_VERSION}/uv-x86_64-pc-windows-msvc.zip",
     "linux": f"https://github.com/astral-sh/uv/releases/download/{UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz",
@@ -120,6 +120,11 @@ CORE_DEPENDENCIES = [
     "imageio>=2.25.0",
     "imageio-ffmpeg>=0.4.6",
     "requests>=2.31.0",
+]
+
+# Custom git dependencies (installed with --no-build-isolation)
+CUSTOM_GIT_DEPENDENCIES = [
+    "git+https://github.com/hukkelas/DSFD-Pytorch-Inference.git",
 ]
 
 # PyTorch installation (CPU vs GPU)

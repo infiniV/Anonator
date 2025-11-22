@@ -5,6 +5,7 @@ import queue
 from pathlib import Path
 import datetime
 import platform
+import os
 
 try:
     from tkinterdnd2 import TkinterDnD, DND_FILES
@@ -37,8 +38,12 @@ class MainWindow:
         self.progress_queue = queue.Queue()
 
         self.input_path = None
+        self.input_file_path = None
         self.output_path = None
         self.is_processing = False
+        self.processing_start_time = None
+        self.video_fps = None
+        self.video_duration = None
 
         self._setup_ui()
         self._setup_drag_drop()
@@ -175,7 +180,11 @@ class MainWindow:
         FieldLabel(settings_grid, text="Detection Model").grid(row=3, column=0, sticky='w', padx=(0, THEME.spacing.pad_base))
 
         self.model_var = tk.StringVar(value=PROCESSOR_CONFIG.detector_model)
-        model_options = ["RetinaNetMobileNetV1", "RetinaNetResNet50", "DSFDDetector"]
+        model_options = [
+            "MediaPipe", "MTCNN", "SCRFD-10GF", "SCRFD-2.5GF", "SCRFD-34GF",
+            "YOLOv8-Face", "YOLO11-Face", "RetinaFace-MobileNet",
+            "RetinaNetMobileNetV1", "RetinaNetResNet50", "DSFDDetector"
+        ]
         self.model_menu = ctk.CTkOptionMenu(
             settings_grid,
             variable=self.model_var,
@@ -506,7 +515,8 @@ class MainWindow:
             return
 
         self.input_path = str(file_path)
-        self.output_path = str(file_path.parent / f"{file_path.stem}_anonymized{file_path.suffix}")
+        self.input_file_path = file_path
+        self.output_path = None
 
         self.file_label.configure(text=f"{file_path.name}")
         self.start_button.configure(state=tk.NORMAL)
@@ -524,6 +534,14 @@ class MainWindow:
         self.progress_label.configure(text="Starting...")
         self._log("Starting processing...")
 
+        # Reset video metadata
+        self.video_fps = None
+        self.video_duration = None
+
+        # Use temporary output path during processing
+        temp_output_path = str(self.input_file_path.parent / f"{self.input_file_path.stem}_temp_processing{self.input_file_path.suffix}")
+        self.temp_output_path = temp_output_path
+
         # Reinitialize processor if model has changed
         selected_model = self.model_var.get()
         if PROCESSOR_CONFIG.detector_model != selected_model:
@@ -533,7 +551,7 @@ class MainWindow:
 
         self.processor.process_video(
             input_path=self.input_path,
-            output_path=self.output_path,
+            output_path=temp_output_path,
             anonymization_mode=self.mode_var.get(),
             threshold=self.threshold_var.get(),
             mask_scale=self.mask_scale_var.get(),
@@ -562,6 +580,12 @@ class MainWindow:
             self.root.after(100, self._poll_queue)
 
     def _update_ui_progress(self, progress_data: ProgressData):
+        # Capture video metadata from first progress update
+        if self.video_fps is None and progress_data.video_fps > 0:
+            self.video_fps = progress_data.video_fps
+            if progress_data.total_frames > 0:
+                self.video_duration = progress_data.total_frames / progress_data.video_fps
+
         # CustomTkinter progress bar expects value between 0 and 1
         progress_value = progress_data.frame_number / progress_data.total_frames
         self.progress_var.set(progress_value)
@@ -595,14 +619,41 @@ class MainWindow:
             )
 
         if progress_data.frame_number >= progress_data.total_frames:
-            self._processing_complete()
+            self._processing_complete(progress_data)
 
-    def _processing_complete(self):
+    def _processing_complete(self, progress_data: ProgressData):
         self.is_processing = False
         self.start_button.configure(state=tk.NORMAL)
         self.cancel_button.configure(state=tk.DISABLED)
         self.progress_label.configure(text="Complete!")
         self._log("Processing complete!")
+
+        # Generate output filename with metadata
+        if self.input_file_path and progress_data and hasattr(self, 'temp_output_path'):
+            model_name = PROCESSOR_CONFIG.detector_model
+            video_fps = int(self.video_fps) if self.video_fps else 0
+            processing_time = progress_data.elapsed_time
+
+            # Calculate conversion ratio (processing_time / video_duration)
+            conversion_ratio = 0.0
+            if self.video_duration and self.video_duration > 0:
+                conversion_ratio = processing_time / self.video_duration
+
+            # Format: {filename}_{model}_{fps}fps_{time}s_{ratio}x{extension}
+            time_str = f"{int(processing_time)}s"
+            ratio_str = f"{conversion_ratio:.2f}x"
+
+            output_filename = f"{self.input_file_path.stem}_{model_name}_{video_fps}fps_{time_str}_{ratio_str}{self.input_file_path.suffix}"
+            self.output_path = str(self.input_file_path.parent / output_filename)
+
+            # Rename temp file to final filename
+            if os.path.exists(self.temp_output_path):
+                try:
+                    os.rename(self.temp_output_path, self.output_path)
+                    self._log(f"Video metadata: {model_name}, {video_fps}fps, {time_str}, {ratio_str}")
+                except Exception as e:
+                    self._log(f"Error renaming file: {e}")
+                    self.output_path = self.temp_output_path
 
         if self.output_path:
             self.video_player.load_video(self.output_path)

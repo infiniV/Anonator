@@ -25,6 +25,11 @@ except ImportError as e:
 from anonator.core.anonymizer import anonymize_frame
 from anonator.core.config import PROCESSOR_CONFIG, HIPAA_MODE, PERFORMANCE_CONFIG
 from anonator.core.scene_detector import SceneDetector
+from anonator.core.mediapipe_detector import MediaPipeDetector
+from anonator.core.mtcnn_detector import MTCNNDetector
+from anonator.core.scrfd_detector import SCRFD10GFDetector, SCRFD2_5GFDetector, SCRFD34GFDetector
+from anonator.core.yolo_face_detector import YOLOv8FaceDetector, YOLO11FaceDetector
+from anonator.core.retinaface_detector import RetinaFaceMobileNetDetector
 
 
 class ProgressData:
@@ -35,7 +40,8 @@ class ProgressData:
         original_frame: np.ndarray,
         anonymized_frame: np.ndarray,
         elapsed_time: float,
-        fps: float
+        fps: float,
+        video_fps: float = 0
     ):
         self.frame_number = frame_number
         self.total_frames = total_frames
@@ -43,6 +49,7 @@ class ProgressData:
         self.anonymized_frame = anonymized_frame
         self.elapsed_time = elapsed_time
         self.fps = fps
+        self.video_fps = video_fps
 
 
 class VideoProcessor:
@@ -51,17 +58,43 @@ class VideoProcessor:
         self._cancel_flag = threading.Event()
         self._processing_thread = None
 
-        self.detector = face_detection.build_detector(
-            PROCESSOR_CONFIG.detector_model,
-            confidence_threshold=PROCESSOR_CONFIG.detector_confidence,
-            nms_iou_threshold=PROCESSOR_CONFIG.nms_iou_threshold,
-            device=device,
-            max_resolution=PROCESSOR_CONFIG.max_resolution,
-            fp16_inference=PROCESSOR_CONFIG.fp16_inference,
-            clip_boxes=PROCESSOR_CONFIG.clip_boxes
-        )
-        logger.info(f"Face detector initialized: {PROCESSOR_CONFIG.detector_model} on {device}")
-        logger.info(f"FP16: {PROCESSOR_CONFIG.fp16_inference}, Max resolution: {PROCESSOR_CONFIG.max_resolution}")
+        # Initialize detector based on model selection
+        model_name = PROCESSOR_CONFIG.detector_model
+
+        # Map model names to detector classes
+        detector_map = {
+            "MediaPipe": MediaPipeDetector,
+            "MTCNN": MTCNNDetector,
+            "SCRFD-10GF": SCRFD10GFDetector,
+            "SCRFD-2.5GF": SCRFD2_5GFDetector,
+            "SCRFD-34GF": SCRFD34GFDetector,
+            "YOLOv8-Face": YOLOv8FaceDetector,
+            "YOLO11-Face": YOLO11FaceDetector,
+            "RetinaFace-MobileNet": RetinaFaceMobileNetDetector,
+        }
+
+        if model_name in detector_map:
+            # Use new detector adapters
+            detector_class = detector_map[model_name]
+            self.detector = detector_class(
+                confidence_threshold=PROCESSOR_CONFIG.detector_confidence,
+                nms_iou_threshold=PROCESSOR_CONFIG.nms_iou_threshold,
+                device=device
+            )
+            logger.info(f"Face detector initialized: {model_name}")
+        else:
+            # Use legacy DSFD detectors
+            self.detector = face_detection.build_detector(
+                model_name,
+                confidence_threshold=PROCESSOR_CONFIG.detector_confidence,
+                nms_iou_threshold=PROCESSOR_CONFIG.nms_iou_threshold,
+                device=device,
+                max_resolution=PROCESSOR_CONFIG.max_resolution,
+                fp16_inference=PROCESSOR_CONFIG.fp16_inference,
+                clip_boxes=PROCESSOR_CONFIG.clip_boxes
+            )
+            logger.info(f"Face detector initialized: {model_name} on {device}")
+            logger.info(f"FP16: {PROCESSOR_CONFIG.fp16_inference}, Max resolution: {PROCESSOR_CONFIG.max_resolution}")
 
     def _calculate_optimal_batch_size(self, frame_width: int, frame_height: int, configured_batch_size: int) -> int:
         """Calculate optimal batch size based on available GPU memory.
@@ -428,7 +461,8 @@ class VideoProcessor:
                                 original_frame=frame.copy(),
                                 anonymized_frame=anonymized.copy(),
                                 elapsed_time=elapsed,
-                                fps=current_fps
+                                fps=current_fps,
+                                video_fps=fps
                             )
                             self.progress_callback(progress_data)
 
@@ -505,7 +539,8 @@ class VideoProcessor:
                             original_frame=frame.copy(),
                             anonymized_frame=anonymized.copy(),
                             elapsed_time=elapsed,
-                            fps=current_fps
+                            fps=current_fps,
+                            video_fps=fps
                         )
 
                         self.progress_callback(progress_data)
@@ -524,7 +559,8 @@ class VideoProcessor:
                     original_frame=np.zeros((10, 10, 3), dtype=np.uint8),
                     anonymized_frame=np.zeros((10, 10, 3), dtype=np.uint8),
                     elapsed_time=elapsed,
-                    fps=final_fps
+                    fps=final_fps,
+                    video_fps=fps
                 )
                 self.progress_callback(final_progress)
 

@@ -77,8 +77,8 @@ class ProcessorConfig:
     Technical parameters for face detection and video processing.
     """
 
-    # Face detector model: "RetinaNetResNet50", "RetinaNetMobileNetV1", "DSFDDetector"
-    detector_model: str = "RetinaNetMobileNetV1"
+    # Face detector model: "MediaPipe", "RetinaNetResNet50", "RetinaNetMobileNetV1", "DSFDDetector"
+    detector_model: str = "MediaPipe"
 
     # Initial detector confidence threshold (will be overridden by mode settings)
     detector_confidence: float = 0.2

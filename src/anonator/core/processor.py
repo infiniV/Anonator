@@ -25,6 +25,7 @@ except ImportError as e:
 from anonator.core.anonymizer import anonymize_frame
 from anonator.core.config import PROCESSOR_CONFIG, HIPAA_MODE, PERFORMANCE_CONFIG
 from anonator.core.scene_detector import SceneDetector
+from anonator.core.mediapipe_detector import MediaPipeDetector
 
 
 class ProgressData:
@@ -35,7 +36,8 @@ class ProgressData:
         original_frame: np.ndarray,
         anonymized_frame: np.ndarray,
         elapsed_time: float,
-        fps: float
+        fps: float,
+        video_fps: float = 0
     ):
         self.frame_number = frame_number
         self.total_frames = total_frames
@@ -43,6 +45,7 @@ class ProgressData:
         self.anonymized_frame = anonymized_frame
         self.elapsed_time = elapsed_time
         self.fps = fps
+        self.video_fps = video_fps
 
 
 class VideoProcessor:
@@ -51,17 +54,26 @@ class VideoProcessor:
         self._cancel_flag = threading.Event()
         self._processing_thread = None
 
-        self.detector = face_detection.build_detector(
-            PROCESSOR_CONFIG.detector_model,
-            confidence_threshold=PROCESSOR_CONFIG.detector_confidence,
-            nms_iou_threshold=PROCESSOR_CONFIG.nms_iou_threshold,
-            device=device,
-            max_resolution=PROCESSOR_CONFIG.max_resolution,
-            fp16_inference=PROCESSOR_CONFIG.fp16_inference,
-            clip_boxes=PROCESSOR_CONFIG.clip_boxes
-        )
-        logger.info(f"Face detector initialized: {PROCESSOR_CONFIG.detector_model} on {device}")
-        logger.info(f"FP16: {PROCESSOR_CONFIG.fp16_inference}, Max resolution: {PROCESSOR_CONFIG.max_resolution}")
+        # Initialize detector based on model selection
+        if PROCESSOR_CONFIG.detector_model == "MediaPipe":
+            self.detector = MediaPipeDetector(
+                confidence_threshold=PROCESSOR_CONFIG.detector_confidence,
+                nms_iou_threshold=PROCESSOR_CONFIG.nms_iou_threshold,
+                device=device
+            )
+            logger.info(f"Face detector initialized: MediaPipe on CPU")
+        else:
+            self.detector = face_detection.build_detector(
+                PROCESSOR_CONFIG.detector_model,
+                confidence_threshold=PROCESSOR_CONFIG.detector_confidence,
+                nms_iou_threshold=PROCESSOR_CONFIG.nms_iou_threshold,
+                device=device,
+                max_resolution=PROCESSOR_CONFIG.max_resolution,
+                fp16_inference=PROCESSOR_CONFIG.fp16_inference,
+                clip_boxes=PROCESSOR_CONFIG.clip_boxes
+            )
+            logger.info(f"Face detector initialized: {PROCESSOR_CONFIG.detector_model} on {device}")
+            logger.info(f"FP16: {PROCESSOR_CONFIG.fp16_inference}, Max resolution: {PROCESSOR_CONFIG.max_resolution}")
 
     def _calculate_optimal_batch_size(self, frame_width: int, frame_height: int, configured_batch_size: int) -> int:
         """Calculate optimal batch size based on available GPU memory.
@@ -428,7 +440,8 @@ class VideoProcessor:
                                 original_frame=frame.copy(),
                                 anonymized_frame=anonymized.copy(),
                                 elapsed_time=elapsed,
-                                fps=current_fps
+                                fps=current_fps,
+                                video_fps=fps
                             )
                             self.progress_callback(progress_data)
 
@@ -505,7 +518,8 @@ class VideoProcessor:
                             original_frame=frame.copy(),
                             anonymized_frame=anonymized.copy(),
                             elapsed_time=elapsed,
-                            fps=current_fps
+                            fps=current_fps,
+                            video_fps=fps
                         )
 
                         self.progress_callback(progress_data)
@@ -524,7 +538,8 @@ class VideoProcessor:
                     original_frame=np.zeros((10, 10, 3), dtype=np.uint8),
                     anonymized_frame=np.zeros((10, 10, 3), dtype=np.uint8),
                     elapsed_time=elapsed,
-                    fps=final_fps
+                    fps=final_fps,
+                    video_fps=fps
                 )
                 self.progress_callback(final_progress)
 

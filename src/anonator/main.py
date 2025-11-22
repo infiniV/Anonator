@@ -1,3 +1,13 @@
+import sys
+import io
+
+# Fix for GUI applications on Windows where sys.stdout/stderr can be None
+# This must be done before any imports that might download models
+if sys.stdout is None:
+    sys.stdout = io.StringIO()
+if sys.stderr is None:
+    sys.stderr = io.StringIO()
+
 import customtkinter as ctk
 import logging
 from pathlib import Path
